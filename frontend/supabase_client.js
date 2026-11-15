@@ -1,8 +1,8 @@
 // Shared Supabase client for every page.
 // The publishable key is meant for the browser: on its own it can't read
 // anything, RLS decides what each signed-in user sees. NEVER put the secret key here.
-const SUPABASE_URL= "https://oswgtubikjlzavaxliuv.supabase.co";   // same as SUPABASE_URL in .env
-const SUPABASE_PUBLISHABLE_KEY= "sb_publishable_2bsjmdVdRpEanb76wEdzcg_cd5NHr1J";    // same as in .env
+const SUPABASE_URL = "https://oswgtubikjlzavaxliuv.supabase.co";   // same as SUPABASE_URL in .env
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_2bsjmdVdRpEanb76wEdzcg_cd5NHr1J";    // same as in .env
 const API_URL = "http://127.0.0.1:8000";                   // our FastAPI server
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -12,7 +12,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_
 const ROLE_HOME = {
   crew: "principal_page.html",
   leader: "principal_page.html",
-  admin: "principal_page.html",
+  admin: "admi.html"
 };
 
 // Returns the signed-in user's profile ({ id, name, role, crew_id, astronaut_code }) or null.

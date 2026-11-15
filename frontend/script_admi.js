@@ -1,20 +1,48 @@
 // =====================================================
 //  ADMIN HISTORY (read-only)
-//  Teammates: only edit the "DATA SOURCE" section.
+//  Data comes from Supabase with the admin's session (admin RLS sees everyone).
+//  Uses supabaseClient and getProfile from supabase_client.js.
 // =====================================================
 
 const $ = (id) => document.getElementById(id);
 
-// ================= DATA SOURCE (TEAMMATES EDIT HERE) =================
-const API_URL = null;            // e.g. "http://localhost:3000/api"
-const USE_SAMPLE_DATA = true;    // set to false when the real API works
+// Escapes text from the database before it goes into innerHTML (avoids XSS)
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
 
-/** getCrew() -> [{ id, name, role, status: "normal"|"follow"|"attention", photo }] */
+// ================= DATA SOURCE (Supabase) =================
+
+// traffic light (health_analyses) -> status used by this page
+const STATUS_FROM_LIGHT = { green: "normal", yellow: "follow", red: "attention" };
+
+/** getCrew() -> [{ id, name, role, status: "normal"|"follow"|"attention"|"none", photo }] */
 async function getCrew() {
-  if (USE_SAMPLE_DATA || !API_URL) return SAMPLE_CREW;
-  const res = await fetch(`${API_URL}/crew`);
-  if (!res.ok) throw new Error("Status " + res.status);
-  return res.json();
+  const { data: people, error } = await supabaseClient
+    .from("profiles")
+    .select("id, name, astronaut_code, role, crew_id")
+    .neq("role", "admin")
+    .order("crew_id")
+    .order("astronaut_code");
+  if (error) throw new Error(error.message);
+
+  const { data: analyses } = await supabaseClient
+    .from("health_analyses")
+    .select("astronaut_id, traffic_light, analyzed_at")
+    .order("analyzed_at", { ascending: false });
+  const latest = {};
+  for (const a of analyses || []) {
+    if (!latest[a.astronaut_id]) latest[a.astronaut_id] = a.traffic_light;
+  }
+
+  return people.map((p) => ({
+    id: p.id,  // uuid (text), not a number
+    name: p.name || p.astronaut_code,
+    role: `${p.astronaut_code || ""} · ${p.role} · ${p.crew_id || "no crew"}`,
+    status: STATUS_FROM_LIGHT[latest[p.id]] || "none",
+    photo: null,
+  }));
 }
 
 /**
@@ -24,53 +52,61 @@ async function getCrew() {
  * }
  */
 async function getMemberHistory(id, days) {
-  if (USE_SAMPLE_DATA || !API_URL) return buildSampleHistory(id, days);
-  const res = await fetch(`${API_URL}/crew/${id}/history?days=${days}`);
-  if (!res.ok) throw new Error("Status " + res.status);
-  return res.json();
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+
+  // One row per day -> chart points
+  const { data: daily, error } = await supabaseClient
+    .from("daily_readings")
+    .select("day, heart_rate, spo2, systolic_pressure, glucose, temperature")
+    .eq("astronaut_id", id)
+    .gte("day", since.slice(0, 10))
+    .order("day", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  const series = {};
+  for (const [key, cfg] of Object.entries(INDICATORS)) {
+    series[key] = {
+      unit: cfg.unit,
+      range: cfg.range,
+      points: daily
+        .filter((d) => d[cfg.column] != null)
+        .map((d) => ({ label: d.day.slice(5), value: Math.round(d[cfg.column] * 10) / 10 })),
+    };
+  }
+
+  // Every single measurement -> table
+  const { data: rows, error: err2 } = await supabaseClient
+    .from("readings_detailed")
+    .select("taken_date, taken_time, indicator_name, value, unit, source, sensor_name")
+    .eq("astronaut_id", id)
+    .gte("taken_at", since)
+    .order("taken_at", { ascending: false })
+    .limit(100);
+  if (err2) throw new Error(err2.message);
+
+  const records = rows.map((r) => ({
+    datetime: `${r.taken_date} · ${r.taken_time}`,
+    indicator: r.indicator_name,
+    value: `${r.value} ${r.unit}`,
+    source: ["manual", "questionnaire"].includes(r.source) ? "manual" : "sensor",
+    notes: r.sensor_name,
+  }));
+
+  return { series, records };
 }
 
 // ================= INDICATORS =================
+// range = GREEN zone of the health engine (backend/ml/health_engine.py):
+//   HR 50-100 bpm at rest (AHA) · SpO2 >= 95 % (BTS) · systolic 90-129 mmHg
+//   (ACC/AHA 2017, ESC/ESH 2018) · glucose 55-180 mg/dL (Endocrine Society / ADA)
+//   temperature < 38 °C = 37 °C + 1.0 (Stahn 2017); 35 °C = hypothermia threshold
 const INDICATORS = {
-  hr:      { label: "Heart rate",       unit: "BPM",   range: { min: 60, max: 100 },  base: 72,   spread: 10 },
-  spo2:    { label: "SpO₂",             unit: "%",     range: { min: 95, max: 100 },  base: 98,   spread: 2 },
-  bp:      { label: "Blood pressure",   unit: "mmHg",  range: { min: 90, max: 120 },  base: 118,  spread: 8 },
-  glucose: { label: "Glucose",          unit: "mg/dL", range: { min: 70, max: 100 },  base: 92,   spread: 8 },
-  temp:    { label: "Body temperature", unit: "°C",    range: { min: 36, max: 37.5 }, base: 36.8, spread: 0.6 },
+  hr: { label: "Heart rate", unit: "BPM", column: "heart_rate", range: { min: 50, max: 100 } },
+  spo2: { label: "SpO₂", unit: "%", column: "spo2", range: { min: 95, max: 100 } },
+  bp: { label: "Blood pressure (systolic)", unit: "mmHg", column: "systolic_pressure", range: { min: 90, max: 129 } },
+  glucose: { label: "Glucose", unit: "mg/dL", column: "glucose", range: { min: 55, max: 180 } },
+  temp: { label: "Body temperature", unit: "°C", column: "temperature", range: { min: 35, max: 38 } },
 };
-
-// ================= SAMPLE DATA (delete when the API works) =================
-const SAMPLE_CREW = [
-  { id: 1, name: "Elena Torres", role: "Commander",       status: "normal",    photo: null },
-  { id: 2, name: "Marco Silva",  role: "Pilot",           status: "normal",    photo: null },
-  { id: 3, name: "Mei Chen",     role: "Flight engineer", status: "follow",    photo: null },
-  { id: 4, name: "Daniel Kim",   role: "Mission doctor",  status: "attention", photo: null },
-];
-
-function buildSampleHistory(id, days) {
-  const n = Math.min(Number(days), 10);
-  const today = 84;
-  const series = {};
-  const records = [];
-  Object.entries(INDICATORS).forEach(([key, cfg]) => {
-    const points = [];
-    for (let i = n - 1; i >= 0; i--) {
-      const wave = Math.sin((today - i) * 1.7 + id) * cfg.spread;
-      points.push({ label: "Day " + (today - i), value: Math.round((cfg.base + wave) * 10) / 10 });
-    }
-    series[key] = { unit: cfg.unit, range: cfg.range, points };
-    points.slice(-3).reverse().forEach((p, i) => {
-      records.push({
-        datetime: `${p.label} · ${["09:15", "21:30", "08:45"][i]}`,
-        indicator: cfg.label,
-        value: (key === "bp" ? `${Math.round(p.value)}/76` : p.value) + " " + cfg.unit,
-        source: i === 2 ? "manual" : "sensor",
-        notes: "",
-      });
-    });
-  });
-  return { series, records };
-}
 
 // ================= STATE =================
 let crew = [];
@@ -85,13 +121,13 @@ function showCrew() {
   const box = $("crew-list");
   if (!crew.length) { box.innerHTML = '<p class="empty">No crew members</p>'; return; }
   box.innerHTML = crew.map((m) => `
-    <div class="team-item ${m.id === selectedId ? "active" : ""}" data-id="${m.id}">
-      ${m.photo ? `<img class="avatar" src="${m.photo}" alt="${m.name}">` : `<div class="avatar">${m.name[0]}</div>`}
-      <div class="info"><strong>${m.name}</strong><div class="role">${m.role || ""}</div></div>
+    <div class="team-item ${m.id === selectedId ? "active" : ""}" data-id="${esc(m.id)}">
+      <div class="avatar">${esc(m.name[0])}</div>
+      <div class="info"><strong>${esc(m.name)}</strong><div class="role">${esc(m.role)}</div></div>
       <div class="value"><i class="dot ${m.status}"></i></div>
     </div>`).join("");
   box.querySelectorAll(".team-item").forEach((el) =>
-    el.addEventListener("click", () => selectMember(Number(el.dataset.id))));
+    el.addEventListener("click", () => selectMember(el.dataset.id)));  // uuid: keep as text
 }
 
 function showChart(chart) {
@@ -121,8 +157,8 @@ function showChart(chart) {
   const path = chart.points.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.value)}`).join(" ");
   svg += `<path class="series" d="${path}"/>`;
   chart.points.forEach((p, i) => {
-    svg += `<circle class="data-point" cx="${x(i)}" cy="${y(p.value)}" r="4.5"><title>${p.label} - ${p.value} ${chart.unit || ""}</title></circle>
-            <text class="label" x="${x(i)}" y="${H - 8}" text-anchor="middle">${p.label}</text>`;
+    svg += `<circle class="data-point" cx="${x(i)}" cy="${y(p.value)}" r="4.5"><title>${esc(p.label)} - ${p.value} ${esc(chart.unit)}</title></circle>
+            <text class="label" x="${x(i)}" y="${H - 8}" text-anchor="middle">${esc(p.label)}</text>`;
   });
   svg += "</svg>";
   box.innerHTML = svg;
@@ -136,11 +172,11 @@ function showRecords(rows) {
   }
   body.innerHTML = rows.map((r) => `
     <tr>
-      <td>${r.datetime}</td>
-      <td>${r.indicator}</td>
-      <td>${r.value}</td>
+      <td>${esc(r.datetime)}</td>
+      <td>${esc(r.indicator)}</td>
+      <td>${esc(r.value)}</td>
       <td><span class="source-tag"><i class="dot ${r.source}"></i> ${r.source === "manual" ? "Manual" : "Sensor"}</span></td>
-      <td>${r.notes || ""}</td>
+      <td>${esc(r.notes)}</td>
     </tr>`).join("");
 }
 
@@ -176,8 +212,7 @@ function selectMember(id) {
   $("member-title").textContent = m ? m.name + " – Health history" : "Health history";
   showCrew();
   loadHistory();
-  // keep the URL in sync so refresh / share keeps the same person
-  history_replaceUrl(id);
+  history_replaceUrl(id);  // refresh / share keeps the same person
 }
 
 function history_replaceUrl(id) {
@@ -206,6 +241,11 @@ $("period-chips").addEventListener("click", (e) => {
 
 // ================= START =================
 (async function init() {
+  const profile = await getProfile();
+  if (!profile || profile.role !== "admin") {
+    window.location.href = "index.html";  // only admins can be here
+    return;
+  }
   try {
     crew = await getCrew();
   } catch (err) {
@@ -213,7 +253,7 @@ $("period-chips").addEventListener("click", (e) => {
     crew = [];
   }
   showCrew();
-  const idFromUrl = Number(new URLSearchParams(location.search).get("id"));
+  const idFromUrl = new URLSearchParams(location.search).get("id");  // uuid text
   const valid = crew.some((c) => c.id === idFromUrl);
   if (crew.length) selectMember(valid ? idFromUrl : crew[0].id);
 })();

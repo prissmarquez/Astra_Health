@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
   <script>window.REQUIRE_ROLE = "admin";</script>
   <script src="auth_guard.js"></script>
 </head>
+
 <body>
   <div class="admin-page">
 
@@ -77,6 +79,23 @@
       <a>Settings</a>
     </nav>
 
+    <!-- admi.html: paste these 3 lines just before </body> (it has no scripts yet) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script src="admi.js"></script>
+
+    <!-- admi.html: paste these 3 lines just before </body> (it has no scripts yet) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script src="admi.js"></script>
+
+    <!-- history_admi.html: these 3 lines before </body>, replacing the line that loads history_admi.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script src="history_admi.js"></script>
+
+
   </div>
 </body>
+
 </html>
