@@ -583,11 +583,8 @@ connectLogoutButton();  // from supabase_client.js
 // ===== On page load =====
 // Only signed-in users can check in; then retry any pending readings.
 (async function init() {
-  const profile = await getProfile();
-  if (!profile) {
-    window.location.href = "index.html";
-    return;
-  }
+  const profile = await requireRole(["crew", "leader"]);  // auth_guard.js
+  if (!profile) return;  // already redirecting
   currentProfile = profile;
   updateConnectionStatus();  // the saved profile may have just changed
 

@@ -109,3 +109,6 @@ saveBtn.addEventListener("click", function () {
 panasRows.addEventListener("change", function () {
   panasMessage.textContent = "";
 });
+// Only crew members and leaders (auth_guard.js); also shows the page
+requireRole(["crew", "leader"]);
+connectLogoutButton();  // from supabase_client.js (no-op without #logout-btn)

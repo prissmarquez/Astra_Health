@@ -1,39 +1,51 @@
 // =====================================================================
-// Session guard for private pages.
+// Session + role guard for private pages.
 // Include it in <head>, AFTER supabase_client.js:
 //   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 //   <script src="supabase_client.js"></script>
 //   <script src="auth_guard.js"></script>
-// For an admin-only page, set the required role BEFORE this script:
-//   <script>window.REQUIRE_ROLE = "admin";</script>
+// Then the page script calls it once and uses the profile it returns:
+//   const profile = await requireRole(["crew", "leader"]);
+//   if (!profile) return;   // already redirecting
+//
+// Wrong role -> ROLE_HOME of that role (crew/leader -> principal_page.html,
+// admin -> admi.html). No session -> index.html.
 //
 // Note: this is only a UX gate. The real security is Supabase RLS and the
-// API token: without a session the database returns nothing anyway.
+// API token: a user who skips this page still only gets the rows RLS allows.
 // =====================================================================
 
-// Hide the page until the session is confirmed, so private content never flashes.
+// Hide the page until the role is confirmed, so private content never flashes.
 document.documentElement.style.visibility = "hidden";
 
-(async function () {
+let roleCheck = null;  // memoized: every call on the page shares one check
+
+function requireRole(allowedRoles) {
+  if (!roleCheck) roleCheck = checkRole(allowedRoles);
+  return roleCheck;
+}
+
+async function checkRole(allowedRoles) {
   try {
     const profile = await getProfile();
 
-    // No session -> back to the login screen.
     if (!profile) {
       location.replace("index.html");
-      return;
+      return null;
     }
 
-    // Wrong role for this page (e.g. a crew member opening an admin page).
-    if (window.REQUIRE_ROLE && profile.role !== window.REQUIRE_ROLE) {
-      location.replace(ROLE_HOME[profile.role] || "index.html");
-      return;
+    if (Array.isArray(allowedRoles) && !allowedRoles.includes(profile.role)) {
+      const home = ROLE_HOME[profile.role] || "index.html";
+      // Never redirect to the same page (would loop)
+      location.replace(location.pathname.endsWith(home) ? "index.html" : home);
+      return null;
     }
 
-    // Allowed: show the page.
     document.documentElement.style.visibility = "";
+    return profile;
   } catch (err) {
     console.error("Auth guard error:", err);
     location.replace("index.html");
+    return null;
   }
-})();
+}

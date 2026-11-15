@@ -177,11 +177,8 @@ function renderIndicatorsChart() {
 connectLogoutButton();  // from supabase_client.js
 
 (async function () {
-  const profile = await getProfile();
-  if (!profile) {
-    window.location.href = "index.html";  // not logged in
-    return;
-  }
+  const profile = await requireRole(["crew", "leader", "admin"]);  // auth_guard.js
+  if (!profile) return;  // already redirecting
   fillHeader(profile);
   await Promise.all([fillLatestValues(profile), fillHealthStatus(profile), fillTeam(profile)]);
   renderIndicatorsChart();  // after the values are in place
