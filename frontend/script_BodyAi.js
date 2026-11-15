@@ -45,7 +45,6 @@ async function generateImage(prompt) {
     return { url: "assets/body.png" };                   // example image
   }
   const res = await fetch(`${BODY_API_URL}/image`, {
-  const res = await fetch(`${BODY_API_URL}/image`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),
