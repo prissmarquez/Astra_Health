@@ -1,4 +1,3 @@
-/* ================= ADMIN ================= */
 
 .admin-page {
   max-width: 1200px;
@@ -94,9 +93,9 @@
   color: var(--blue);
 }
 
-/* ================= ADMIN HISTORY (history_admi.html) ================= */
 
-/* botones de filtro */
+
+
 .chips {
   display: flex;
   flex-wrap: wrap;
