@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase_client.js"></script>
   <script src="auth_guard.js"></script>
+  <script src="nav.js"></script>
 </head>
 <body>
   <div class="body-page">
@@ -26,7 +27,10 @@
         <small>Next check-in in:</small>
         <strong id="cuenta" class="reloj">--:--:--</strong>
       </div>
-      <div class="conectado"><span class="punto"></span> Connected</div>
+      <div class="conectado"><span class="punto"></span> Checking...</div>
+
+      <!-- LOG OUT -->
+      <button class="btn-borde btn-logout" id="logout-btn">Log out</button>
     </header>
 
     <div class="body-layout">
@@ -43,8 +47,6 @@
           <button type="button" class="system-btn" data-system="immune"><span class="sys-ico">🛡️</span><span>Immune system</span></button>
           <button type="button" class="system-btn" data-system="thermo"><span class="sys-ico">🌡️</span><span>Thermoregulation</span></button>
         </div>
-        <a href="principal_page.html" class="back-btn">← Back to Dashboard</a>
-        
       </aside>
 
       <!-- CENTER: AI-GENERATED IMAGE -->
