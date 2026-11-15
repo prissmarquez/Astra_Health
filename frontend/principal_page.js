@@ -54,7 +54,7 @@ async function fillLatestValues(profile) {
 async function fillHealthStatus(profile) {
   const { data, error } = await supabaseClient
     .from("health_analyses")
-    .select("traffic_light, clinical_reasons, deviations, connections, detected_by_ml, day")
+    .select("traffic_light, clinical_reasons, deviations, connections, detected_by_ml, day, analyzed_at")
     .eq("astronaut_id", profile.id)
     .order("analyzed_at", { ascending: false })
     .limit(1);
@@ -80,7 +80,7 @@ async function fillHealthStatus(profile) {
   if (a.detected_by_ml) reasons.push("unusual pattern (ML)");
   if (reasons.length === 0) {
     setText("atencion-titulo", "No indicators needing attention");
-    setText("atencion-detalle", `Last check-in: ${a.day}`);
+    setText("atencion-detalle", `Last check-in: ${formatLocalDateTime(a.analyzed_at)}`);
   } else {
     setText("atencion-titulo", reasons[0]);
     setText("atencion-detalle", [...reasons.slice(1), ...a.connections].join(" · "));

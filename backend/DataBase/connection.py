@@ -42,6 +42,16 @@ def user_client(access_token: str) -> Client:
     return client
 
 
+def admin_client() -> Client:
+    """Client with the SECRET key for admin tasks (Supabase Auth admin API). SERVER ONLY.
+
+    Used by POST /admin/users to create accounts. It bypasses RLS, so the
+    endpoint must check that the caller is an admin BEFORE using it.
+    SUPABASE_SECRET_KEY lives only in backend/DataBase/.env, never in the front-end.
+    """
+    return create_client(_env("SUPABASE_URL"), _env("SUPABASE_SECRET_KEY"))
+
+
 def service_client() -> Client:
     """Client with the SECRET key: full access, bypasses RLS. SERVER ONLY.
 

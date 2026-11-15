@@ -70,14 +70,15 @@ async function getCrew() {
 
 
 async function getMemberHistory(id, days) {
-  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const sinceDate = new Date(Date.now() - days * 86400000);
+  const since = sinceDate.toISOString();  // full UTC timestamp for taken_at
 
   // One row per day -> chart points
   const { data: daily, error } = await supabaseClient
     .from("daily_readings")
     .select("day, heart_rate, spo2, systolic_pressure, glucose, temperature")
     .eq("astronaut_id", id)
-    .gte("day", since.slice(0, 10))
+    .gte("day", utcDay(sinceDate))
     .order("day", { ascending: true });
   if (error) throw new Error(error.message);
 
@@ -88,14 +89,14 @@ async function getMemberHistory(id, days) {
       range: cfg.range,
       points: daily
         .filter((d) => d[cfg.column] != null)
-        .map((d) => ({ label: d.day.slice(5), value: Math.round(d[cfg.column] * 10) / 10 })),
+        .map((d) => ({ label: formatDay(d.day, { month: "short", day: "numeric" }), value: Math.round(d[cfg.column] * 10) / 10 })),
     };
   }
 
   // Every single measurement -> table
   const { data: rows, error: err2 } = await supabaseClient
     .from("readings_detailed")
-    .select("taken_date, taken_time, indicator_name, value, unit, source, sensor_name")
+    .select("taken_at, indicator_name, value, unit, source, sensor_name")
     .eq("astronaut_id", id)
     .gte("taken_at", since)
     .order("taken_at", { ascending: false })
@@ -103,7 +104,7 @@ async function getMemberHistory(id, days) {
   if (err2) throw new Error(err2.message);
 
   const records = rows.map((r) => ({
-    datetime: `${r.taken_date} · ${r.taken_time}`,
+    datetime: formatLocalDateTime(r.taken_at),
     indicator: r.indicator_name,
     value: `${r.value} ${r.unit}`,
     source: ["manual", "questionnaire"].includes(r.source) ? "manual" : "sensor",

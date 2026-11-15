@@ -5,13 +5,13 @@ let currentProfile = null;
 
 
 const MEASUREMENT_INFO = {
-  heart_rate:         { unit: "bpm",   decimals: 0, min: 20, max: 250 },
-  hrv:                { unit: "ms",    decimals: 0, min: 1,  max: 300 },
-  spo2:               { unit: "%",     decimals: 0, min: 50, max: 100 },
-  temperature:        { unit: "°C",    decimals: 1, min: 30, max: 45 },
-  systolic_pressure:  { unit: "mmHg",  decimals: 0, min: 50, max: 260 },
-  diastolic_pressure: { unit: "mmHg",  decimals: 0, min: 30, max: 160 },
-  glucose:            { unit: "mg/dL", decimals: 0, min: 20, max: 600 }
+  heart_rate: { unit: "bpm", decimals: 0, min: 20, max: 250 },
+  hrv: { unit: "ms", decimals: 0, min: 1, max: 300 },
+  spo2: { unit: "%", decimals: 0, min: 50, max: 100 },
+  temperature: { unit: "°C", decimals: 1, min: 30, max: 45 },
+  systolic_pressure: { unit: "mmHg", decimals: 0, min: 50, max: 260 },
+  diastolic_pressure: { unit: "mmHg", decimals: 0, min: 30, max: 160 },
+  glucose: { unit: "mg/dL", decimals: 0, min: 20, max: 600 }
 };
 
 // The 7 values the reading needs (same names as OfflineReading in backend/main.py)
@@ -140,7 +140,7 @@ function listenToSensor(sensor, onPacket) {
   // Packet of this characteristic -> DataView, or null to ignore it
   function toView(msg) {
     if (!msg || msg.uuid !== spec.uuid || !Array.isArray(msg.bytes) ||
-        msg.bytes.length === 0 || msg.bytes.length > MAX_PACKET_BYTES) {
+      msg.bytes.length === 0 || msg.bytes.length > MAX_PACKET_BYTES) {
       return null;
     }
     try {
@@ -309,7 +309,7 @@ function showPanasState() {
   const panasResult = getPanasResult();
   if (panasResult) {
     panasState.textContent = "Completed ✓  Positive: " + panasResult.positive +
-                             "/50 · Negative: " + panasResult.negative + "/50";
+      "/50 · Negative: " + panasResult.negative + "/50";
     panasState.classList.add("done");
     panasBtn.textContent = "Answer again →";
   } else {
@@ -404,7 +404,7 @@ function newUuid() {
     return b.toString(16).padStart(2, "0");
   }).join("");
   return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" +
-         hex.slice(16, 20) + "-" + hex.slice(20);
+    hex.slice(16, 20) + "-" + hex.slice(20);
 }
 
 // ===== Validation =====
@@ -512,21 +512,21 @@ function clinicalPreview(r) {
     flag(r.temperature > 40.5, false, "very high temperature during exercise");
   } else {
     flag(r.temperature >= expectedTemp + 2.0, r.temperature >= expectedTemp + 1.0,
-         "high temperature");
+      "high temperature");
     flag(r.heart_rate > 120 || r.heart_rate < 40, r.heart_rate > 100 || r.heart_rate < 50,
-         "HR out of range");
+      "HR out of range");
   }
 
   // High BP: red ACC/AHA 2017 stage 2, yellow ESC/ESH 2018 high-normal
   flag(r.systolic_pressure >= 140 || r.diastolic_pressure >= 90,
-       r.systolic_pressure >= 130 || r.diastolic_pressure >= 85,
-       "high pressure");
+    r.systolic_pressure >= 130 || r.diastolic_pressure >= 85,
+    "high pressure");
   // Low BP, relative to expected pressure
   flag(r.systolic_pressure < expectedSys - 30, r.systolic_pressure < expectedSys - 25,
-       "low pressure");
+    "low pressure");
   // Glucose: hypoglycemia (Cryer 2009 / ADA level 2) and hyperglycemia
   flag(r.glucose < 54 || r.glucose > 250, r.glucose < 55 || r.glucose > 180,
-       "glucose out of range");
+    "glucose out of range");
 
   // Sleep: the server uses the 7-night mean; here we only have one night,
   // so it is an advisory and never changes the level.
@@ -613,7 +613,7 @@ async function syncQueue() {
     const withoutOwner = queue.filter(function (reading) { return !reading.owner_id; });
     if (withoutOwner.length > 0) {
       console.warn(withoutOwner.length + " queued reading(s) have no owner_id; " +
-                   "they are kept in the queue and not uploaded.");
+        "they are kept in the queue and not uploaded.");
     }
     const mine = queue.filter(function (reading) { return reading.owner_id === userId; });
     if (mine.length === 0) return [];
@@ -634,7 +634,7 @@ async function syncQueue() {
     const results = await response.json();
     const okIds = new Set(
       results.filter(function (item) { return item.ok; })
-             .map(function (item) { return String(item.id).toLowerCase(); })
+        .map(function (item) { return String(item.id).toLowerCase(); })
     );
 
     // Reload the queue: a reading may have been added while waiting.
@@ -660,7 +660,7 @@ async function retrySync() {
     const pending = countPendingReadings();
     if (uploaded > 0 && finishMessage.textContent === "") {
       showFinishInfo("Uploaded " + uploaded + " pending reading(s)." +
-                     (pending > 0 ? " " + pending + " still pending." : ""));
+        (pending > 0 ? " " + pending + " still pending." : ""));
     }
   } catch (error) {
     // Still offline or server down: readings stay in the queue
@@ -692,7 +692,7 @@ finishBtn.addEventListener("click", async function () {
 
   // 2) Preliminary traffic light computed on the device
   showTrafficLight("Preliminary result", clinicalPreview(reading),
-                   "Saved on this device. Uploading...");
+    "Saved on this device. Uploading...");
 
   // PANAS is used: the next check-in needs a new one
   sessionStorage.removeItem("panasResult");
@@ -709,20 +709,20 @@ finishBtn.addEventListener("click", async function () {
     if (mine && mine.ok && mine.analysis) {
       const pending = countPendingReadings();
       showTrafficLight("Result", mine.analysis,
-                       pending > 0 ? pending + " older reading(s) still pending." : "Mission log saved.");
+        pending > 0 ? pending + " older reading(s) still pending." : "Mission log saved.");
     } else if (mine && !mine.ok) {
       showTrafficLight("Preliminary result", clinicalPreview(reading),
-                       "Not uploaded yet (" + (mine.error || "unknown error") +
-                       "). It will be retried automatically.");
+        "Not uploaded yet (" + (mine.error || "unknown error") +
+        "). It will be retried automatically.");
     } else {
       // Another sync was already running; this reading goes in the next one
       showTrafficLight("Preliminary result", clinicalPreview(reading),
-                       "Saved on this device. It will be uploaded automatically.");
+        "Saved on this device. It will be uploaded automatically.");
     }
   } catch (syncError) {
     showTrafficLight("Preliminary result", clinicalPreview(reading),
-                     "Offline: saved on this device, it will be uploaded when you are back online. (" +
-                     syncError.message + ")");
+      "Offline: saved on this device, it will be uploaded when you are back online. (" +
+      syncError.message + ")");
   } finally {
     finishBtn.disabled = false;
   }

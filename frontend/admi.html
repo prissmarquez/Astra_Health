@@ -74,6 +74,41 @@
       </ul>
     </section>
 
+    <!-- CREATE PROFILE (POST /admin/users on our FastAPI server) -->
+    <section class="card">
+      <h3>Create profile</h3>
+      <p class="hint">The ID sets the role: ASP-0000 crew, LDR-0000 leader, ADM-0000 admin.
+        A crew needs its leader before any crew member.</p>
+
+      <form id="create-user-form" class="create-user-form" autocomplete="off">
+        <label for="cu-name">Name</label>
+        <input id="cu-name" class="field" type="text" maxlength="120" required>
+
+        <label for="cu-role">Role</label>
+        <select id="cu-role" class="field" required>
+          <option value="crew">crew</option>
+          <option value="leader">leader</option>
+          <option value="admin">admin</option>
+        </select>
+
+        <label for="cu-code">ID</label>
+        <input id="cu-code" class="field" type="text" maxlength="8" placeholder="ASP-1004"
+               pattern="(ASP|LDR|ADM)-[0-9]{4}" required>
+
+        <label for="cu-password">Password</label>
+        <input id="cu-password" class="field" type="password" minlength="8" maxlength="72"
+               autocomplete="new-password" required>
+
+        <label for="cu-crew">Crew</label>
+        <select id="cu-crew" class="field">
+          <option value="">No crew</option>
+        </select>
+
+        <p class="form-msg" id="cu-msg" role="status"></p>
+        <button type="submit" class="btn-principal create-user-btn" id="cu-submit">Create profile</button>
+      </form>
+    </section>
+
     <!-- NAVIGATION -->
     <nav class="card nav">
       <a class="activo" href="admi.html">Home</a>
