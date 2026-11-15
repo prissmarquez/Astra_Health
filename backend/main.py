@@ -16,7 +16,7 @@ BACKEND = Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND / "ml"))
 sys.path.insert(0, str(BACKEND / "DataBase"))
 
-from connection import public_client, user_client  # noqa: E402
+from connection import public_client, service_client, user_client  # noqa: E402
 from health_engine import IND, WINDOW, analyze  # noqa: E402
 from measurements import list_daily_readings, save_measurements  # noqa: E402
 
@@ -284,9 +284,16 @@ def to_measurements(reading):
 
 
 def save_analysis(token, reading, result):
-    """Stores the traffic light in health_analyses (migration 008). Insert-only."""
+    """Stores the traffic light in health_analyses (migration 010). Insert-only.
+
+    Written with the service_role client (migration 013): users may not insert
+    their own analyses, or they could forge the verdict. astronaut_id is set
+    from result (the verified token owner), not from the client, and there is
+    no auth.uid() for this client, so it must be passed explicitly.
+    """
     row = {
         "id": str(reading.id),
+        "astronaut_id": result.astronaut_id,
         "day": result.day.isoformat(),
         "traffic_light": result.traffic_light,
         "mode": "personal" if result.mode == "personal" else "startup",
@@ -297,7 +304,7 @@ def save_analysis(token, reading, result):
         "model_version": MODEL_VERSION,
     }
     (
-        user_client(token)
+        service_client()
         .table("health_analyses")
         .upsert(row, on_conflict="id", ignore_duplicates=True, default_to_null=False)
         .execute()

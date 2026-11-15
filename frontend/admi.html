@@ -6,10 +6,16 @@
   <title>Astra Health - Admin</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="admi.css">
+  <!-- Session guard: admin only; redirect to the login or the user's home -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_client.js"></script>
+  <script>window.REQUIRE_ROLE = "admin";</script>
+  <script src="auth_guard.js"></script>
 </head>
 <body>
   <div class="admin-page">
 
+    
     <!-- HEADER -->
     <header class="card header">
       <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
