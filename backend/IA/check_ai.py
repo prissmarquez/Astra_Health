@@ -17,7 +17,6 @@ def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")   # emojis on the Windows console
     settings = load_settings()
     print(f"Model:     {settings.model}")
-    print(f"Language:  {settings.language}")
     print(f"AI on:     {settings.enabled}")
     print(f"API key:   {'set' if settings.api_key else 'MISSING'}")
 

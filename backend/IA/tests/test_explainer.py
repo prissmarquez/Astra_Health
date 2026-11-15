@@ -59,7 +59,7 @@ class FakeClient:
 @pytest.fixture
 def settings(tmp_path):
     return Settings(api_key="test-key", model="claude-haiku-5-5", enabled=True, timeout=5,
-                    language="en", cache_path=tmp_path / "cache.json",
+                    cache_path=tmp_path / "cache.json",
                     demo_path=tmp_path / "demo.json")
 
 
@@ -136,7 +136,7 @@ def test_cached_answer_is_reused_when_claude_fails(settings):
 
 
 def test_demo_answer_is_used_when_claude_fails(settings):
-    key = cache_key(CASE["analysis"], CASE["context"], "en")
+    key = cache_key(CASE["analysis"], CASE["context"])
     settings.demo_path.write_text(json.dumps({key: {
         "summary": "Demo summary.", "detail": "Demo detail.",
         "recommendations": ["Demo tip."], "model": "claude-haiku-5-5"}}))
@@ -148,13 +148,12 @@ def test_demo_answer_is_used_when_claude_fails(settings):
 
 # ---------- Template: never invents exercise -------------------------------
 
-@pytest.mark.parametrize("language", ["en", "es"])
 @pytest.mark.parametrize("name", SCENARIOS)
-def test_template_passes_scenario_checks(settings, name, language):
+def test_template_passes_scenario_checks(settings, name):
     settings = Settings(**{**settings.__dict__, "enabled": False})
     explainer, _ = make(settings)
     case = SCENARIOS[name]
-    result = explainer.explain(case["analysis"], case["context"], language)
+    result = explainer.explain(case["analysis"], case["context"])
     assert check(name, result) == []
 
 

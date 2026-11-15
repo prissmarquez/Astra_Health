@@ -30,19 +30,16 @@ class Settings:
     model: str
     enabled: bool          # False -> always use the template (test the fallback)
     timeout: float         # seconds before giving up on Claude
-    language: str          # "en" or "es"
     cache_path: Path       # explanations Claude already wrote (local, not in git)
     demo_path: Path        # pre-generated scenario explanations (in git)
 
 
 def load_settings() -> Settings:
-    language = os.environ.get("EXPLANATION_LANGUAGE", "en").strip().lower()
     return Settings(
         api_key=os.environ.get("ANTHROPIC_API_KEY", "").strip(),
         model=os.environ.get("CLAUDE_MODEL", "claude-haiku-5-5").strip(),
         enabled=_flag("AI_ENABLED", True),
         timeout=float(os.environ.get("AI_TIMEOUT", "15")),
-        language=language if language in {"en", "es"} else "en",
         cache_path=BASE / ".cache" / "responses.json",
         demo_path=BASE / "demo_responses.json",
     )
