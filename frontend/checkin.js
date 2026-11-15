@@ -8,13 +8,12 @@ const measureButtons = document.querySelectorAll(".measure-btn");
 
 measureButtons.forEach(function (button) {
   button.addEventListener("click", function () {
-    const sensor = button.dataset.sensor;
     const status = button.parentElement.querySelector(".measure-status");
 
     // "Connecting..." text with a small spinning circle instead of a number
     button.disabled = true;
     button.innerHTML = 'Connecting... <span class="spinner"></span>';
-    status.textContent = "Connecting to " + sensor + " sensor";
+    status.textContent = "Connecting to sensor";
     status.classList.remove("done");
 
     // Wait 5 seconds (5000 ms)
@@ -30,101 +29,85 @@ measureButtons.forEach(function (button) {
   });
 });
 
-// ===== PANAS questionnaire =====
-// 20 feelings in the original PANAS order.
-// type "positive" = Positive Affect, "negative" = Negative Affect
-const panasItems = [
-  { word: "Interested",   type: "positive" },
-  { word: "Distressed",   type: "negative" },
-  { word: "Excited",      type: "positive" },
-  { word: "Upset",        type: "negative" },
-  { word: "Strong",       type: "positive" },
-  { word: "Guilty",       type: "negative" },
-  { word: "Scared",       type: "negative" },
-  { word: "Hostile",      type: "negative" },
-  { word: "Enthusiastic", type: "positive" },
-  { word: "Proud",        type: "positive" },
-  { word: "Irritable",    type: "negative" },
-  { word: "Alert",        type: "positive" },
-  { word: "Ashamed",      type: "negative" },
-  { word: "Inspired",     type: "positive" },
-  { word: "Nervous",      type: "negative" },
-  { word: "Determined",   type: "positive" },
-  { word: "Attentive",    type: "positive" },
-  { word: "Jittery",      type: "negative" },
-  { word: "Active",       type: "positive" },
-  { word: "Afraid",       type: "negative" }
-];
+// ===== PANAS card =====
+// Shows if the questionnaire was already completed (saved by panas.js)
+const panasState = document.getElementById("panasState");
+const panasBtn = document.getElementById("panasBtn");
+const panasResult = JSON.parse(sessionStorage.getItem("panasResult"));
 
-const panasRows = document.getElementById("panasRows");
-const panasAnswered = document.getElementById("panasAnswered");
-const panasPositive = document.getElementById("panasPositive");
-const panasNegative = document.getElementById("panasNegative");
-
-// Create one table row per feeling, with 5 radio buttons (1 to 5)
-panasItems.forEach(function (item, index) {
-  const row = document.createElement("tr");
-  let cells = "<td>" + item.word + "</td>";
-
-  for (let value = 1; value <= 5; value++) {
-    cells += '<td><input type="radio" name="panas' + index + '" value="' + value +
-             '" aria-label="' + item.word + ' ' + value + '"></td>';
-  }
-
-  row.innerHTML = cells;
-  panasRows.appendChild(row);
-});
-
-// Calculate the scores every time an answer changes
-function calculatePanas() {
-  let answered = 0;
-  let positive = 0;
-  let negative = 0;
-
-  panasItems.forEach(function (item, index) {
-    const checked = document.querySelector('input[name="panas' + index + '"]:checked');
-
-    if (checked) {
-      answered = answered + 1;
-      const value = Number(checked.value);
-
-      if (item.type === "positive") {
-        positive = positive + value;
-      } else {
-        negative = negative + value;
-      }
-    }
-  });
-
-  panasAnswered.textContent = answered;
-
-  // Scores are only shown when all 20 items are answered
-  if (answered === panasItems.length) {
-    panasPositive.textContent = positive;
-    panasNegative.textContent = negative;
-  } else {
-    panasPositive.textContent = "-";
-    panasNegative.textContent = "-";
-  }
-
-  return answered;
+if (panasResult) {
+  panasState.textContent = "Completed ✓  Positive: " + panasResult.positive +
+                           "/50 · Negative: " + panasResult.negative + "/50";
+  panasState.classList.add("done");
+  panasBtn.textContent = "Answer again →";
 }
 
-panasRows.addEventListener("change", calculatePanas);
+// ===== Sleep: convert hours + minutes to sleep_min =====
+// Returns null if both fields are empty.
+function getSleepMinutes() {
+  const hours = document.getElementById("sleepHours").value;
+  const minutes = document.getElementById("sleepMinutes").value;
+
+  if (hours === "" && minutes === "") {
+    return null;
+  }
+
+  return Number(hours) * 60 + Number(minutes);
+}
+
+// ===== Data to send to the backend =====
+// Uses the same names as the database.
+// The sensor values are null for now; they will come from the real sensors.
+function getCheckinData() {
+  const exercise = document.querySelector('input[name="exercise"]:checked');
+
+  return {
+    heart_rate: null,
+    hrv: null,              // confirm this name with backend
+    spo2: null,
+    temperature: null,
+    systolic_bp: null,      // blood pressure is sent as two values
+    diastolic_bp: null,
+    glucose: null,
+    sleep_min: getSleepMinutes(),
+    context: document.getElementById("sleepNotes").value.trim(),
+    exercise: exercise ? exercise.value : null,
+    panas_positive: panasResult ? panasResult.positive : null,
+    panas_negative: panasResult ? panasResult.negative : null
+  };
+}
 
 // ===== Finish button =====
-// For now it only checks the PANAS and shows a message.
+// For now it checks the form and shows the data in the console (F12).
 const finishBtn = document.getElementById("finishBtn");
 const finishMessage = document.getElementById("finishMessage");
 
-finishBtn.addEventListener("click", function () {
-  const answered = calculatePanas();
+function showFinishError(text) {
+  finishMessage.textContent = text;
+  finishMessage.className = "finish-message error";
+}
 
-  if (answered < panasItems.length) {
-    finishMessage.textContent = "Please answer all 20 PANAS items (" + answered + "/20 answered).";
-    finishMessage.className = "finish-message error";
+finishBtn.addEventListener("click", function () {
+  const minutes = document.getElementById("sleepMinutes").value;
+  const sleepMin = getSleepMinutes();
+
+  if (minutes !== "" && (Number(minutes) < 0 || Number(minutes) > 59)) {
+    showFinishError("Sleep minutes must be between 0 and 59.");
     return;
   }
+
+  if (sleepMin !== null && (sleepMin < 0 || sleepMin > 1440)) {
+    showFinishError("Sleep time must be between 0 and 24 hours.");
+    return;
+  }
+
+  if (!panasResult) {
+    showFinishError("Please complete the mood questionnaire (PANAS) first.");
+    return;
+  }
+
+  // TODO: send this object to the backend (PHP)
+  console.log(getCheckinData());
 
   finishMessage.textContent = "Mission log completed.";
   finishMessage.className = "finish-message";

@@ -48,7 +48,7 @@
           <span class="measure-icon icon-red">❤</span>
           <div class="measure-info">
             <strong>Heart Rate (HR)</strong>
-            <button class="measure-btn" data-sensor="heart rate">Measure</button>
+            <button class="measure-btn" data-sensor="heart_rate">Measure</button>
             <small class="measure-status"></small>
           </div>
         </div>
@@ -58,7 +58,7 @@
           <span class="measure-icon icon-blue">📈</span>
           <div class="measure-info">
             <strong>HRV <span class="soft">(Heart Rate Variability)</span></strong>
-            <button class="measure-btn" data-sensor="HRV">Measure</button>
+            <button class="measure-btn" data-sensor="hrv">Measure</button>
             <small class="measure-status"></small>
           </div>
         </div>
@@ -70,10 +70,18 @@
           <label class="choice"><input type="radio" name="exercise" value="no"> No</label>
         </div>
 
-        <!-- Sleep -->
+        <!-- Sleep: hours + minutes (sent as sleep_min) and optional notes (sent as context) -->
         <div class="sleep-box">
-          <label for="sleep"><strong>Sleep duration and quality</strong> <span class="soft">(Text entry)</span></label>
-          <input type="text" id="sleep" placeholder="e.g., 7 hours, woke up twice">
+          <strong>Sleep duration and quality</strong>
+          <div class="sleep-time">
+            <label>
+              <input type="number" id="sleepHours" min="0" max="24" placeholder="0"> h
+            </label>
+            <label>
+              <input type="number" id="sleepMinutes" min="0" max="59" placeholder="0"> min
+            </label>
+          </div>
+          <input type="text" id="sleepNotes" placeholder="Notes (optional), e.g., woke up twice">
         </div>
 
         <!-- SpO2 -->
@@ -81,7 +89,7 @@
           <span class="measure-icon icon-blue">💧</span>
           <div class="measure-info">
             <strong>SpO₂ <span class="soft">(Pulse oximetry)</span></strong>
-            <button class="measure-btn" data-sensor="SpO2">Measure</button>
+            <button class="measure-btn" data-sensor="spo2">Measure</button>
             <small class="measure-status"></small>
           </div>
         </div>
@@ -96,37 +104,38 @@
           </div>
         </div>
 
+        <!-- Blood pressure -->
+        <div class="measure-box bp-box">
+          <span class="measure-icon icon-purple">🩺</span>
+          <div class="measure-info">
+            <strong>Blood Pressure (BP)</strong>
+            <button class="measure-btn" data-sensor="blood_pressure">Measure</button>
+            <small class="measure-status"></small>
+          </div>
+        </div>
+
+        <!-- Glucose -->
+        <div class="measure-box glucose-box">
+          <span class="measure-icon icon-red">🩸</span>
+          <div class="measure-info">
+            <strong>Blood Glucose <span class="soft">(Continuous monitor)</span></strong>
+            <button class="measure-btn" data-sensor="glucose">Measure</button>
+            <small class="measure-status"></small>
+          </div>
+        </div>
+
       </div>
     </main>
 
-    <!-- PANAS QUESTIONNAIRE -->
-    <section class="card panas">
-      <h3>Mood questionnaire <span class="soft">(PANAS)</span></h3>
-      <p class="panas-instructions">
-        Indicate to what extent you have felt this way <strong>today</strong>.<br>
-        <small>1 = Very slightly or not at all · 2 = A little · 3 = Moderately · 4 = Quite a bit · 5 = Extremely</small>
-      </p>
-
-      <table class="panas-table">
-        <thead>
-          <tr>
-            <th>Feeling</th>
-            <th>1</th>
-            <th>2</th>
-            <th>3</th>
-            <th>4</th>
-            <th>5</th>
-          </tr>
-        </thead>
-        <!-- The 20 rows are created by checkin.js -->
-        <tbody id="panasRows"></tbody>
-      </table>
-
-      <div class="panas-results">
-        <span>Answered: <b id="panasAnswered">0</b> / 20</span>
-        <span>Positive affect: <b id="panasPositive">-</b> / 50</span>
-        <span>Negative affect: <b id="panasNegative">-</b> / 50</span>
+    <!-- PANAS QUESTIONNAIRE (opens panas.html) -->
+    <section class="card panas-link">
+      <span class="panas-link-icon">🧠</span>
+      <div class="panas-link-text">
+        <h3>Mood questionnaire <span class="soft">(PANAS)</span></h3>
+        <p>20 quick questions about how you have felt today.</p>
+        <small class="panas-state" id="panasState">Not completed</small>
       </div>
+      <a href="panas.html" class="btn-principal panas-btn" id="panasBtn">Start questionnaire →</a>
     </section>
 
     <!-- TIP + FINISH -->
@@ -142,11 +151,11 @@
     </div>
     <p class="finish-message" id="finishMessage"></p>
 
-     <!-- NAVIGATION -->
+   <!-- NAVIGATION -->
     <nav class="card nav">
-      <a class="activo" href="principal_page.html">Home</a>
+      <a href="principal_page.html">Home</a>
       <a href="historical.html">History</a>
-      <a href="checkin.html">Check-in</a>
+      <a href="checkin.html" class="activo">Check-in
       <a href="BodyAi.html">Body</a>
       <a href="sensors.html">Sensors</a>
       <a>Settings</a>
