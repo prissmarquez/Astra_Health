@@ -81,17 +81,80 @@ function setFormMsg(text, type) {
   msg.className = "form-msg" + (type ? " " + type : "");
 }
 
+// Replaces the options of a <select>, keeping its first `keep` fixed options
+// ("No crew", "Keep current crew"...), so reloading never duplicates them.
+function fillSelect(select, items, keep) {
+  select.length = keep;
+  for (const [value, label] of items) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    select.appendChild(option);
+  }
+}
+
+// Every crew list on the page: Create profile, Create mission and Move member
 async function loadCrewOptions() {
   const { data, error } = await supabaseClient.from("crews").select("id, name").order("id");
   if (error) return console.error("crews:", error.message);
-  crewSelect.length = 1;  // keep only "No crew" so reloading never duplicates options
-  for (const crew of data) {
-    const option = document.createElement("option");
-    option.value = crew.id;
-    option.textContent = crew.name ? `${crew.id} · ${crew.name}` : crew.id;
-    crewSelect.appendChild(option);
-  }
+  const items = data.map((crew) => [crew.id, crew.name ? `${crew.id} · ${crew.name}` : crew.id]);
+  fillSelect(crewSelect, items, 1);                                  // No crew
+  fillSelect(document.getElementById("cm-crew"), items, 1);          // No crew
+  fillSelect(document.getElementById("mv-crew"), items, 2);          // Keep / No crew
 }
+
+// Missions for Move member (MSN-... · name)
+async function loadMissionOptions() {
+  const { data, error } = await supabaseClient.from("missions").select("code, name").order("code");
+  if (error) return console.error("missions:", error.message);
+  const items = data.map((m) => [m.code, m.name ? `${m.code} · ${m.name}` : m.code]);
+  fillSelect(document.getElementById("mv-mission"), items, 2);       // Keep / No mission
+}
+
+// Astronauts (ASP / LDR) for Move member
+async function loadPeopleOptions() {
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("astronaut_code, name, crew_id")
+    .neq("role", "admin")
+    .not("astronaut_code", "is", null)
+    .order("astronaut_code");
+  if (error) return console.error("people:", error.message);
+  const items = data.map((p) => [
+    p.astronaut_code,
+    `${p.astronaut_code} · ${p.name || ""} · ${p.crew_id || "no crew"}`,
+  ]);
+  fillSelect(document.getElementById("mv-person"), items, 1);        // Choose an astronaut
+}
+
+// Keeps a fixed prefix (ASTRA-, MSN-) in front of what is typed, in capitals
+function keepPrefix(input, prefix) {
+  const value = input.value.toUpperCase();
+  let i = 0;
+  while (i < prefix.length && value[i] === prefix[i]) i++;           // skip the (partial) prefix
+  input.value = prefix + value.slice(i).replace(/[^A-Z0-9]/g, "");
+}
+
+// POST to our API with the admin's token; returns the JSON or throws the server's message
+async function postAdmin(path, body) {
+  const token = await getAccessToken();
+  if (!token) throw new Error("Your session expired. Log in again.");
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
+function setMsg(id, text, type) {
+  const msg = document.getElementById(id);
+  msg.textContent = text;
+  msg.className = "form-msg" + (type ? " " + type : "");
+}
+
+const NETWORK_ERROR = "Could not reach the server. Is uvicorn running?";
 
 // Role changes the ID prefix and admins never join a crew
 function onRoleChange() {
@@ -159,7 +222,7 @@ userForm.addEventListener("submit", async (event) => {
     );
     userForm.reset();
     onRoleChange();
-    await loadCrewGrid();  // show the new person
+    await Promise.all([loadCrewGrid(), loadPeopleOptions()]);  // show the new person everywhere
   } catch (error) {
     // Network error (server off / offline) or the server's message, shown as text
     setFormMsg(error instanceof TypeError ? "Could not reach the server. Is uvicorn running?" : error.message, "error");
@@ -179,12 +242,7 @@ const crewForm = document.getElementById("create-crew-form");
 const crewIdInput = document.getElementById("cc-id");
 
 // Keep the ASTRA- prefix: whatever is typed after it stays, the prefix comes back if deleted
-function keepCrewPrefix() {
-  const value = crewIdInput.value.toUpperCase();
-  const rest = value.startsWith(CREW_PREFIX) ? value.slice(CREW_PREFIX.length) : value.replace(/^A?S?T?R?A?-?/, "");
-  crewIdInput.value = CREW_PREFIX + rest.replace(/[^A-Z0-9]/g, "");
-}
-crewIdInput.addEventListener("input", keepCrewPrefix);
+crewIdInput.addEventListener("input", () => keepPrefix(crewIdInput, CREW_PREFIX));
 
 function setCrewMsg(text, type) {
   const msg = document.getElementById("cc-msg");
@@ -223,12 +281,94 @@ crewForm.addEventListener("submit", async (event) => {
     crewForm.reset();  // the ID goes back to its default value, "ASTRA-"
 
     // Ready for the next step: the new crew selected and the role set to leader
-    await loadCrewOptions();
+    await loadCrewOptions();  // also refreshes Create mission and Move member
     roleSelect.value = "leader";
     onRoleChange();
     crewSelect.value = created.id;
   } catch (error) {
     setCrewMsg(error instanceof TypeError ? "Could not reach the server. Is uvicorn running?" : error.message, "error");
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+// ================= CREATE MISSION =================
+// Calls POST /admin/missions with the admin's own token. Every mission ID
+// starts with MSN- (migration 016). With a crew, its members join automatically.
+
+const MISSION_PREFIX = "MSN-";
+const MISSION_CODE_PATTERN = /^MSN-[A-Z0-9]{1,14}$/;
+const missionForm = document.getElementById("create-mission-form");
+const missionCodeInput = document.getElementById("cm-code");
+missionCodeInput.addEventListener("input", () => keepPrefix(missionCodeInput, MISSION_PREFIX));
+
+missionForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const launchDate = document.getElementById("cm-launch").value;  // yyyy-mm-dd
+  const body = {
+    code: missionCodeInput.value.trim().toUpperCase(),
+    name: document.getElementById("cm-name").value.trim(),
+    mission_type: document.getElementById("cm-type").value,
+    launch_at: launchDate ? `${launchDate}T12:00:00Z` : "",          // noon UTC of that day
+    crew_id: document.getElementById("cm-crew").value || null,
+  };
+
+  if (!MISSION_CODE_PATTERN.test(body.code)) {
+    return setMsg("cm-msg", "The mission ID looks like MSN-03 (MSN- + 1 to 14 capitals or digits).", "error");
+  }
+  if (!body.name) return setMsg("cm-msg", "Enter a mission name.", "error");
+  if (!launchDate) return setMsg("cm-msg", "Choose the launch date.", "error");
+
+  const submit = document.getElementById("cm-submit");
+  submit.disabled = true;
+  setMsg("cm-msg", "Creating...");
+  try {
+    const created = await postAdmin("/admin/missions", body);
+    const until = created.planned_return_at.slice(0, 10);
+    setMsg("cm-msg",
+      `Created ${created.code} (${created.mission_type}, until ${until}` +
+      `${created.crew_id ? ", crew " + created.crew_id : ""}).`, "ok");
+    missionForm.reset();  // the ID goes back to "MSN-"
+    await loadMissionOptions();
+  } catch (error) {
+    setMsg("cm-msg", error instanceof TypeError ? NETWORK_ERROR : error.message, "error");
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+// ================= MOVE MEMBER =================
+// Calls POST /admin/move. Only what changes is sent: "Keep ..." sends nothing,
+// "No crew" / "No mission" sends null (leave). Leaders and crew cannot move people.
+
+const moveForm = document.getElementById("move-member-form");
+
+moveForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const person = document.getElementById("mv-person").value;
+  const crew = document.getElementById("mv-crew").value;
+  const mission = document.getElementById("mv-mission").value;
+
+  if (!person) return setMsg("mv-msg", "Choose an astronaut.", "error");
+  const body = { astronaut_code: person };
+  if (crew !== "__keep__") body.crew_id = crew || null;
+  if (mission !== "__keep__") body.mission_code = mission || null;
+  if (!("crew_id" in body) && !("mission_code" in body)) {
+    return setMsg("mv-msg", "Choose a new crew and/or a new mission.", "error");
+  }
+
+  const submit = document.getElementById("mv-submit");
+  submit.disabled = true;
+  setMsg("mv-msg", "Moving...");
+  try {
+    const moved = await postAdmin("/admin/move", body);
+    setMsg("mv-msg",
+      `${moved.astronaut_code}: crew ${moved.crew_id || "none"}, ` +
+      `missions ${moved.missions.length ? moved.missions.join(", ") : "none"}.`, "ok");
+    moveForm.reset();
+    await Promise.all([loadCrewGrid(), loadPeopleOptions()]);
+  } catch (error) {
+    setMsg("mv-msg", error instanceof TypeError ? NETWORK_ERROR : error.message, "error");
   } finally {
     submit.disabled = false;
   }
@@ -242,5 +382,5 @@ connectLogoutButton();  // from supabase_client.js
   document.getElementById("nombre-usuario").textContent = profile.name || profile.astronaut_code;
   document.getElementById("rol-usuario").textContent = `${profile.astronaut_code} · Administrator`;
   onRoleChange();
-  await Promise.all([loadCrewGrid(), loadCrewOptions()]);
+  await Promise.all([loadCrewGrid(), loadCrewOptions(), loadMissionOptions(), loadPeopleOptions()]);
 })();

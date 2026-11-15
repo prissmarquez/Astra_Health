@@ -25,7 +25,14 @@ sys.path.insert(0, str(BACKEND / "IA"))
 
 from connection import admin_client, public_client, service_client, user_client  # noqa: E402
 from health_engine import IND, WINDOW, analyze  # noqa: E402
-from measurements import create_crew, list_daily_readings, save_measurements  # noqa: E402
+from measurements import (  # noqa: E402
+    create_crew,
+    create_mission,
+    list_daily_readings,
+    move_to_mission,
+    save_measurements,
+    set_user_crew,
+)
 from body_systems import SYSTEMS, focus, focused, system_metric, system_status, updated_ago  # noqa: E402
 from explainer import explain  # noqa: E402
 from validation import error_message, out_of_range  # noqa: E402
@@ -193,6 +200,65 @@ class NewCrew(BaseModel):
 class CreatedCrew(BaseModel):
     id: str
     name: str
+
+
+class NewMission(BaseModel):
+    """POST /admin/missions: a new mission created by a ground admin."""
+
+    # MSN- + 1 to 14 capitals or digits (migration 016)
+    code: str = Field(..., pattern=r"^MSN-[A-Z0-9]{1,14}$", examples=["MSN-03"])
+    name: str = Field(..., min_length=1, max_length=120, examples=["Orion test flight"])
+    mission_type: Literal["short", "standard", "long"]  # 14 / 180 / 365 flight days
+    launch_at: AwareDatetime
+    crew_id: str | None = Field(None, pattern=r"^ASTRA-[A-Z0-9]{1,14}$", examples=["ASTRA-01"])
+
+    @field_validator("code", "crew_id", mode="before")
+    @classmethod
+    def normalize_ids(cls, value):
+        if isinstance(value, str):
+            value = value.strip().upper()
+            return value or None
+        return value
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class CreatedMission(BaseModel):
+    id: str
+    code: str
+    name: str
+    mission_type: str
+    launch_at: datetime
+    planned_return_at: datetime
+    crew_id: str | None = None
+
+
+class MoveMember(BaseModel):
+    """POST /admin/move: move a person to another crew and/or mission.
+
+    Send only what changes. null removes: crew_id null = leave the crew,
+    mission_code null = leave the current (unfinished) missions."""
+
+    astronaut_code: str = Field(..., pattern=r"^(ASP|LDR)-[0-9]{4}$", examples=["ASP-1003"])
+    crew_id: str | None = Field(None, pattern=r"^ASTRA-[A-Z0-9]{1,14}$", examples=["ASTRA-02"])
+    mission_code: str | None = Field(None, pattern=r"^MSN-[A-Z0-9]{1,14}$", examples=["MSN-02"])
+
+    @field_validator("astronaut_code", "crew_id", "mission_code", mode="before")
+    @classmethod
+    def normalize_ids(cls, value):
+        if isinstance(value, str):
+            value = value.strip().upper()
+            return value or None
+        return value
+
+
+class MovedMember(BaseModel):
+    astronaut_code: str
+    crew_id: str | None = None
+    missions: list[str] = []  # codes of the missions they take part in now
 
 
 # ---------- Helpers ------------------------------------------------------------
@@ -588,6 +654,95 @@ def create_crew_endpoint(
             raise HTTPException(403, "Only a ground admin can create crews") from error
         raise HTTPException(400, f"Could not create the crew: {text}") from error
     return CreatedCrew(id=row["id"], name=row["name"])
+
+
+def db_error_status(error, default=400):
+    """HTTP status for a database refusal (RLS, missing row, crew/mission rules)."""
+    text = error_text(error).lower()
+    code = str(getattr(error, "code", "") or "")
+    if code in ("42501",) or "only an admin" in text or "row-level security" in text:
+        return 403
+    if code in ("23505",) or "duplicate" in text or "already exists" in text:
+        return 409
+    if "not found" in text:
+        return 404
+    if any(s in text for s in ("is full", "leader", "does not take part", "foreign key")):
+        return 409
+    return default
+
+
+@app.post("/admin/missions", response_model=CreatedMission, status_code=201)
+def create_mission_endpoint(
+    new: NewMission, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
+):
+    """Creates a mission. Admins only.
+
+    Uses the admin's own token: RLS (policy "missions: admin creates") checks the
+    role again. The database computes the planned return from the mission type.
+    With crew_id, the crew's members join automatically; the crew must already
+    have its leader and the mission holds 4 people at most (migrations 005-007).
+    """
+    token = require_token(credentials)
+    require_admin(token, "create missions")
+    try:
+        row = create_mission(token, new.code, new.name, new.mission_type, new.launch_at, new.crew_id)
+    except Exception as error:
+        text = error_text(error)
+        status = db_error_status(error)
+        if status == 409 and ("duplicate" in text.lower() or "unique" in text.lower()):
+            text = f"Mission {new.code} already exists"
+        raise HTTPException(status, f"Could not create the mission: {text}") from error
+    return CreatedMission(**{k: row[k] for k in CreatedMission.model_fields})
+
+
+@app.post("/admin/move", response_model=MovedMember)
+def move_member(
+    move: MoveMember, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
+):
+    """Moves an astronaut to another crew and/or mission. Admins only.
+
+    Leaders and crew members cannot move anyone (the database functions
+    set_user_crew and move_to_mission check it again). The crew change goes
+    first: the person joins the new crew's unfinished missions; then, if a
+    mission_code is sent, they are moved to that mission.
+    """
+    token = require_token(credentials)
+    require_admin(token, "move crew members")
+    changes = move.model_fields_set - {"astronaut_code"}
+    if not changes:
+        raise HTTPException(400, "Send crew_id and/or mission_code (null removes)")
+
+    db = user_client(token)
+    found = (
+        db.table("profiles").select("id").eq("astronaut_code", move.astronaut_code).execute().data
+    )
+    if not found:
+        raise HTTPException(404, f"{move.astronaut_code} not found")
+    user_id = found[0]["id"]
+
+    try:
+        if "crew_id" in changes:
+            set_user_crew(token, user_id, move.crew_id)
+        if "mission_code" in changes:
+            move_to_mission(token, user_id, move.mission_code)
+    except Exception as error:
+        raise HTTPException(
+            db_error_status(error), f"Could not move {move.astronaut_code}: {error_text(error)}"
+        ) from error
+
+    profile = db.table("profiles").select("crew_id").eq("id", user_id).single().execute().data
+    missions = (
+        db.table("mission_participants")
+        .select("missions(code)")
+        .eq("user_id", user_id)
+        .execute()
+        .data
+    )
+    return MovedMember(
+        astronaut_code=move.astronaut_code,
+        crew_id=profile["crew_id"],
+        missions=sorted(m["missions"]["code"] for m in missions if m.get("missions")),
+    )
 
 
 class BodyAnalysis(BaseModel):

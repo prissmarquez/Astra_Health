@@ -109,21 +109,85 @@
       </form>
     </section>
 
-    <!-- CREATE CREW (POST /admin/crews on our FastAPI server) -->
+    <!-- CREATE CREW + CREATE MISSION, side by side -->
+    <div class="admin-split">
+      <!-- CREATE CREW (POST /admin/crews on our FastAPI server) -->
+      <section class="card">
+        <h3>Create crew</h3>
+        <p class="hint">A new crew starts empty: create its leader (LDR) first, then up to 3 crew members (ASP).</p>
+
+        <form id="create-crew-form" class="create-user-form" autocomplete="off">
+          <label for="cc-id">Crew ID</label>
+          <input id="cc-id" class="field" type="text" maxlength="20" placeholder="ASTRA-B" value="ASTRA-"
+                 pattern="ASTRA-[A-Za-z0-9]{1,14}" required>
+
+          <label for="cc-name">Crew name</label>
+          <input id="cc-name" class="field" type="text" maxlength="120" placeholder="Astra Crew B" required>
+
+          <p class="form-msg" id="cc-msg" role="status"></p>
+          <button type="submit" class="btn-principal create-user-btn" id="cc-submit">Create crew</button>
+        </form>
+      </section>
+
+      <!-- CREATE MISSION (POST /admin/missions on our FastAPI server) -->
+      <section class="card">
+        <h3>Create mission</h3>
+        <p class="hint">Short 14 days, standard 180, long 365. With a crew, its members join automatically (4 max).</p>
+
+        <form id="create-mission-form" class="create-user-form" autocomplete="off">
+          <label for="cm-code">Mission ID</label>
+          <input id="cm-code" class="field" type="text" maxlength="18" placeholder="MSN-03" value="MSN-"
+                 pattern="MSN-[A-Za-z0-9]{1,14}" required>
+
+          <label for="cm-name">Mission name</label>
+          <input id="cm-name" class="field" type="text" maxlength="120" placeholder="Orion test flight" required>
+
+          <label for="cm-type">Type</label>
+          <select id="cm-type" class="field" required>
+            <option value="short">short (14 days)</option>
+            <option value="standard">standard (180 days)</option>
+            <option value="long">long (365 days)</option>
+          </select>
+
+          <label for="cm-launch">Launch date</label>
+          <input id="cm-launch" class="field" type="date" required>
+
+          <label for="cm-crew">Crew</label>
+          <select id="cm-crew" class="field">
+            <option value="">No crew</option>
+          </select>
+
+          <p class="form-msg" id="cm-msg" role="status"></p>
+          <button type="submit" class="btn-principal create-user-btn" id="cm-submit">Create mission</button>
+        </form>
+      </section>
+    </div>
+
+    <!-- MOVE MEMBER (POST /admin/move on our FastAPI server) -->
     <section class="card">
-      <h3>Create crew</h3>
-      <p class="hint">A new crew starts empty: create its leader (LDR) first, then up to 3 crew members (ASP).</p>
+      <h3>Move member</h3>
+      <p class="hint">Only the admin can move people. Changing crew also joins that crew's unfinished missions.</p>
 
-      <form id="create-crew-form" class="create-user-form" autocomplete="off">
-        <label for="cc-id">Crew ID</label>
-        <input id="cc-id" class="field" type="text" maxlength="20" placeholder="ASTRA-B" value="ASTRA-"
-               pattern="ASTRA-[A-Za-z0-9]{1,14}" required>
+      <form id="move-member-form" class="create-user-form" autocomplete="off">
+        <label for="mv-person">Person</label>
+        <select id="mv-person" class="field" required>
+          <option value="">Choose an astronaut</option>
+        </select>
 
-        <label for="cc-name">Crew name</label>
-        <input id="cc-name" class="field" type="text" maxlength="120" placeholder="Astra Crew B" required>
+        <label for="mv-crew">New crew</label>
+        <select id="mv-crew" class="field">
+          <option value="__keep__">Keep current crew</option>
+          <option value="">No crew</option>
+        </select>
 
-        <p class="form-msg" id="cc-msg" role="status"></p>
-        <button type="submit" class="btn-principal create-user-btn" id="cc-submit">Create crew</button>
+        <label for="mv-mission">New mission</label>
+        <select id="mv-mission" class="field">
+          <option value="__keep__">Keep current missions</option>
+          <option value="">No mission</option>
+        </select>
+
+        <p class="form-msg" id="mv-msg" role="status"></p>
+        <button type="submit" class="btn-principal create-user-btn" id="mv-submit">Move</button>
       </form>
     </section>
 
