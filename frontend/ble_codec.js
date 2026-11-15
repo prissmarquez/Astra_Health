@@ -1,20 +1,3 @@
-// =====================================================================
-// ASTRA HEALTH - Bluetooth LE codec (GATT characteristic formats)
-//
-// Encodes / decodes the official Bluetooth SIG characteristic formats, so the
-// same parsers work with the emulated sensors (BroadcastChannel between tabs)
-// and, later, with real devices over Web Bluetooth.
-//
-// References (Bluetooth SIG, https://www.bluetooth.com/specifications/specs/):
-//   * GATT Specification Supplement (GSS): field layout of every characteristic.
-//   * Heart Rate Service (HRS) 1.0, Pulse Oximeter Service (PLXS) 1.0.1,
-//     Health Thermometer Service (HTS) 1.0, Blood Pressure Service (BLS) 1.1,
-//     Glucose Service (GLS) 1.0.
-//   * IEEE 11073-20601 (Personal Health Devices): SFLOAT and FLOAT types.
-// All multi-byte fields are little-endian, as the Bluetooth Core Spec requires.
-//
-// Works in the browser (global BleCodec) and in Node (require("./ble_codec.js")).
-// =====================================================================
 
 const BleCodec = (function () {
   "use strict";
@@ -25,8 +8,6 @@ const BleCodec = (function () {
     return "0000" + uuid16.toString(16).padStart(4, "0") + "-0000-1000-8000-00805f9b34fb";
   }
 
-  // ---------- IEEE 11073-20601 SFLOAT (16-bit) -------------------------------
-  // 4-bit signed exponent (high nibble) + 12-bit signed mantissa: value = mantissa * 10^exponent.
   // Reserved mantissas: 0x7FF NaN, 0x800 NRes, 0x7FE +INF, 0x802 -INF, 0x801 reserved.
   const SFLOAT = { NAN: 0x07ff, NRES: 0x0800, POS_INF: 0x07fe, NEG_INF: 0x0802, RESERVED: 0x0801 };
   const SFLOAT_MANTISSA_MAX = 2045;  // 0x7FD; 0x7FE-0x802 are special values
@@ -75,7 +56,7 @@ const BleCodec = (function () {
     return fromMantissa(mantissa, exponent);
   }
 
-  // ---------- IEEE 11073-20601 FLOAT (32-bit) --------------------------------
+  
   // 8-bit signed exponent (high byte) + 24-bit signed mantissa.
   // Reserved mantissas: 0x7FFFFF NaN, 0x800000 NRes, 0x7FFFFE +INF, 0x800002 -INF, 0x800001 reserved.
   const FLOAT = { NAN: 0x007fffff, NRES: 0x00800000, POS_INF: 0x007ffffe, NEG_INF: 0x00800002, RESERVED: 0x00800001 };
@@ -101,7 +82,7 @@ const BleCodec = (function () {
     return fromMantissa(mantissa, exponent);
   }
 
-  // ---------- Byte helpers ---------------------------------------------------
+  
 
   // Accepts a DataView (Web Bluetooth), ArrayBuffer, Uint8Array or array of bytes.
   function toDataView(input) {
@@ -154,13 +135,7 @@ const BleCodec = (function () {
     toUint8Array() { return Uint8Array.from(this.bytes); }
   }
 
-  // ---------- Heart Rate Measurement (0x2A37) --------------------------------
-  // Bluetooth SIG, Heart Rate Service 1.0 + GSS "Heart Rate Measurement".
-  // Flags (uint8):
-  //   bit 0    Heart Rate Value Format: 0 = uint8, 1 = uint16 (bpm)
-  //   bits 1-2 Sensor Contact Status: 0/1 not supported, 2 = no contact, 3 = contact
-  //   bit 3    Energy Expended present (uint16, kJ)
-  //   bit 4    RR-Interval present (one or more uint16, resolution 1/1024 s)
+ 
   function encodeHeartRate({ heartRate, rrIntervalsMs = [], energyExpended = null, sensorContact = true }) {
     const wide = heartRate > 255;
     let flags = wide ? 0x01 : 0x00;
@@ -196,14 +171,7 @@ const BleCodec = (function () {
     };
   }
 
-  // ---------- PLX Spot-Check Measurement (0x2A5E) ----------------------------
-  // Bluetooth SIG, Pulse Oximeter Service 1.0.1 + GSS "PLX Spot-Check Measurement".
-  // Flags (uint8): bit 0 Timestamp present · bit 1 Measurement Status present ·
-  //   bit 2 Device and Sensor Status present · bit 3 Pulse Amplitude Index present ·
-  //   bit 4 Device Clock is Not Set
-  // SpO2PR-Spot-Check: SpO2 (SFLOAT, %) + Pulse Rate (SFLOAT, bpm), then the optional
-  // Timestamp (Date Time), Measurement Status (uint16), Device and Sensor Status (uint24),
-  // Pulse Amplitude Index (SFLOAT, %).
+ 
   function encodePlxSpotCheck({ spo2, pulseRate, timestamp = null }) {
     const w = new ByteWriter().u8(timestamp ? 0x01 : 0x00);
     w.sfloat(spo2, 0).sfloat(pulseRate, 0);
@@ -223,13 +191,7 @@ const BleCodec = (function () {
     return result;
   }
 
-  // ---------- Temperature Measurement (0x2A1C) -------------------------------
-  // Bluetooth SIG, Health Thermometer Service 1.0 + GSS "Temperature Measurement".
-  // Flags (uint8): bit 0 units (0 = Celsius, 1 = Fahrenheit) · bit 1 Time Stamp present ·
-  //   bit 2 Temperature Type present
-  // Temperature: FLOAT (IEEE-11073 32-bit) · Time Stamp: Date Time ·
-  // Temperature Type (uint8, GSS 0x2A1D): 1 armpit, 2 body (general), 3 ear, 4 finger,
-  //   5 GI tract, 6 mouth, 7 rectum, 8 toe, 9 tympanum.
+
   function encodeTemperature({ celsius, timestamp = null, type = 2 }) {
     let flags = 0x00;  // Celsius
     if (timestamp) flags |= 0x02;
@@ -253,12 +215,7 @@ const BleCodec = (function () {
     };
   }
 
-  // ---------- Blood Pressure Measurement (0x2A35) ----------------------------
-  // Bluetooth SIG, Blood Pressure Service 1.1 + GSS "Blood Pressure Measurement".
-  // Flags (uint8): bit 0 units (0 = mmHg, 1 = kPa) · bit 1 Time Stamp present ·
-  //   bit 2 Pulse Rate present · bit 3 User ID present · bit 4 Measurement Status present
-  // Compound value: Systolic, Diastolic, Mean Arterial Pressure (SFLOAT each), then the
-  // optional Time Stamp (Date Time), Pulse Rate (SFLOAT), User ID (uint8), Status (uint16).
+
   const KPA_TO_MMHG = 7.500617;
 
   function encodeBloodPressure({ systolic, diastolic, meanArterial = null, pulseRate = null, timestamp = null }) {
@@ -291,16 +248,7 @@ const BleCodec = (function () {
     return result;
   }
 
-  // ---------- Glucose Measurement (0x2A18) -----------------------------------
-  // Bluetooth SIG, Glucose Service 1.0 + GSS "Glucose Measurement".
-  // Flags (uint8): bit 0 Time Offset present · bit 1 Concentration, Type and Sample Location
-  //   present · bit 2 Concentration units (0 = kg/L, 1 = mol/L) · bit 3 Sensor Status
-  //   Annunciation present · bit 4 Context Information Follows
-  // Sequence Number (uint16) · Base Time (Date Time, mandatory) · Time Offset (sint16, min) ·
-  // Concentration (SFLOAT) · Type (low nibble) + Sample Location (high nibble) (uint8) ·
-  // Sensor Status Annunciation (uint16).
-  // Type 0x9 = interstitial fluid (ISF); Sample Location 0xF = not available.
-  // Units: 1 mg/dL = 1e-5 kg/L; mmol/L -> mg/dL x 18.0156 (glucose molar mass 180.156 g/mol).
+
   const MGDL_PER_MMOL = 18.0156;
 
   function encodeGlucose({ mgdl, sequenceNumber = 0, baseTime = new Date(), units = "kg/L",
@@ -335,7 +283,6 @@ const BleCodec = (function () {
     return result;
   }
 
-  // ---------- HRV ------------------------------------------------------------
   // RMSSD: root mean square of successive RR differences (Task Force of the ESC/NASPE,
   // Circulation 1996). rrIntervalsMs: RR intervals in ms, in order. Returns ms or null.
   function computeRmssd(rrIntervalsMs) {
@@ -346,7 +293,7 @@ const BleCodec = (function () {
     return Math.round(Math.sqrt(sum / (rr.length - 1)) * 10) / 10;
   }
 
-  // ---------- Sensors: app indicator <-> GATT service / characteristic --------
+ 
   // toIndicators(decoded) -> { indicator: value } with the names of OfflineReading.
   // hrv has no characteristic of its own: it is computed from the RR intervals of 0x2A37.
   const SENSORS = {

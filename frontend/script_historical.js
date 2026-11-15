@@ -1,23 +1,6 @@
-// =====================================================
-//  HISTORY PAGE (crew + leader)
-//  Uses supabaseClient (supabase_client.js) and requireRole (auth_guard.js).
-//
-//  Who sees what (enforced by Supabase RLS, migrations 002 / 007 / 010):
-//    crew   -> their own full history + the LATEST value of each crewmate
-//              (crew_latest). Crewmates' names are not clickable, and
-//              ?id=<someone else> is ignored.
-//    leader -> the same + can open a crewmate's full history (?id=<member>),
-//              updated live with Supabase Realtime.
-//  Hiding things here is only UX: RLS returns nothing the role may not see.
-// =====================================================
 
 const $ = (id) => document.getElementById(id);
 
-// ================= INDICATORS =================
-// column = daily_readings column / measurements.indicator code.
-// range  = GREEN zone of the health engine (backend/ml/health_engine.py):
-//   HR 50-100 bpm at rest (AHA) · SpO2 >= 95 % (BTS) · systolic 90-129 mmHg
-//   (ACC/AHA 2017, ESC/ESH 2018) · glucose 55-180 mg/dL · temperature < 38 °C (Stahn 2017)
 const INDICATORS = {
   hr:      { label: "Heart rate",                unit: "BPM",   column: "heart_rate",        range: { min: 50, max: 100 }, icon: "assets/recourse2.png" },
   spo2:    { label: "SpO₂",                      unit: "%",     column: "spo2",              range: { min: 95, max: 100 }, icon: "assets/oxigen.png" },
@@ -27,9 +10,7 @@ const INDICATORS = {
   temp:    { label: "Body temperature",          unit: "°C",    column: "temperature",       range: { min: 35, max: 38 },  icon: null },
 };
 
-// Color of a single value: same thresholds as health_engine.clinical() with
-// adaptation 0 (at rest). Only a visual hint for the team panel; crewmates'
-// real traffic lights are private (RLS) unless you are the leader.
+
 function classifyValue(indicator, value, extra) {
   if (value == null) return "";
   const v = Number(value);
@@ -51,7 +32,7 @@ function classifyValue(indicator, value, extra) {
 const STATUS_FROM_LIGHT = { green: "normal", yellow: "follow", red: "attention" };
 const LIGHT_TEXT = { green: "Normal", yellow: "Follow-up", red: "Needs attention" };
 
-// ================= STATE =================
+
 let me = null;          // signed-in profile
 let mates = [];         // crew_latest rows (all indicators) for my crewmates
 let targetId = null;    // whose history is on screen
@@ -64,9 +45,9 @@ function sinceDate(days) {
   return new Date(Date.now() - Number(days) * 86400000);
 }
 
-// ================= DATA SOURCE (Supabase) =================
 
-// One row per day -> chart points + adaptation
+
+
 async function fetchDaily(astronautId, days) {
   const { data, error } = await supabaseClient
     .from("daily_readings")
@@ -95,7 +76,7 @@ async function fetchRecords(astronautId, indicator, days) {
   return data;
 }
 
-// Traffic lights of the period (latest analysis of each day)
+
 async function fetchAnalyses(astronautId, days) {
   const { data, error } = await supabaseClient
     .from("health_analyses")
@@ -118,9 +99,7 @@ async function fetchTeam() {
   return data;
 }
 
-// ================= RENDER HELPERS =================
-// SECURITY: data from the database is ALWAYS shown with textContent
-// or setAttribute, never with innerHTML.
+
 
 function makeEl(tag, className, text) {
   const el = document.createElement(tag);
@@ -206,7 +185,7 @@ function showChart(chart) {
   box.replaceChildren(svg);
 }
 
-// ----- Detailed log -----
+
 function showRecords(rows) {
   const body = $("records-body");
   if (!rows || !rows.length) {
@@ -238,7 +217,7 @@ function showRecords(rows) {
   });
 }
 
-// ----- Daily status (traffic lights) + adaptation history -----
+
 function showStatus(rows) {
   const body = $("status-body");
   if (!rows || !rows.length) {
@@ -271,8 +250,7 @@ function showStatus(rows) {
   });
 }
 
-// ----- Team panel -----
-// list: [{ id, name, value, unit, status }]
+
 function showTeam(list) {
   const box = $("team-list");
   if (!list || !list.length) {
@@ -316,7 +294,6 @@ function showTeam(list) {
   });
 }
 
-// ================= BUILD VIEW MODELS =================
 
 // crew_latest rows -> one entry per crewmate for the chosen indicator
 function teamFor(indicator) {
@@ -386,7 +363,7 @@ function buildStatus(daily, analysesByDay) {
   return [...days.values()].sort((a, b) => (a.day < b.day ? 1 : -1));  // newest first
 }
 
-// ================= HEADER + "VIEWING" BANNER =================
+
 
 function showMe() {
   $("user-name").textContent = me.name || me.astronaut_code || "Astronaut";
@@ -402,7 +379,7 @@ function showViewing() {
     : "Health history of " + mateName(targetId);
 }
 
-// ================= SELECTED INDICATOR: title + ICON =================
+
 function updateIndicatorUI(indicator) {
   const cfg = INDICATORS[indicator];
   $("chart-title").textContent = cfg.label;
@@ -413,7 +390,6 @@ function updateIndicatorUI(indicator) {
   else { icon.style.display = "none"; }
 }
 
-// ================= LOAD =================
 
 async function loadHistory() {
   const indicator = $("indicator-filter").value;
@@ -457,7 +433,7 @@ async function loadTeam() {
   showTeam(teamFor($("indicator-filter").value));
 }
 
-// ================= LEADER: VIEW A CREWMATE =================
+
 
 // Leader -> only crewmates; crew -> always themselves (?id= is ignored).
 function allowedTarget(id) {
@@ -483,9 +459,7 @@ function viewMember(id) {
 
 $("back-to-mine").addEventListener("click", () => viewMember(me.id));
 
-// ================= REALTIME =================
-// New measurements / analyses are pushed by Supabase (filtered by RLS).
-// A check-in inserts many rows at once, so reloads are grouped.
+
 let reloadTimer = null;
 const pendingReload = { history: false, team: false };
 
@@ -514,7 +488,7 @@ function subscribeLive() {
     .subscribe();
 }
 
-// ================= FILTERS + BUTTONS =================
+
 $("indicator-filter").addEventListener("change", () => {
   showTeam(teamFor($("indicator-filter").value));  // same data, other indicator
   loadHistory();
@@ -523,7 +497,7 @@ $("period-filter").addEventListener("change", loadHistory);
 $("export-btn").addEventListener("click", () => alert("Export will be connected to the backend."));
 $("details-btn").addEventListener("click", () => alert("Details view pending."));
 
-// ================= CUSTOM DROPDOWNS =================
+
 document.querySelectorAll(".select-box").forEach((box) => {
   const sel = box.querySelector("select");
   const label = document.createElement("button");
@@ -555,7 +529,7 @@ document.querySelectorAll(".select-box").forEach((box) => {
 document.addEventListener("click", () =>
   document.querySelectorAll(".select-box.open").forEach((b) => b.classList.remove("open")));
 
-// ================= START =================
+
 connectLogoutButton();  // from supabase_client.js (no-op without #logout-btn)
 
 (async function init() {

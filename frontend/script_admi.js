@@ -1,14 +1,7 @@
-// =====================================================
-//  ADMIN HISTORY (read-only)
-//  Data comes from Supabase with the admin's session (admin RLS sees everyone).
-//  Uses supabaseClient and getProfile from supabase_client.js.
-// =====================================================
+
 
 const $ = (id) => document.getElementById(id);
 
-// SECURITY: data from the database is ALWAYS shown with textContent
-// or setAttribute, never with innerHTML. This way, if a note or a name
-// contains HTML or <script>, it is shown as plain text and never runs.
 
 // Creates an element with an optional class and text (text is safe)
 function makeEl(tag, className, text) {
@@ -42,7 +35,7 @@ function makeSvg(tag, attrs) {
   return el;
 }
 
-// ================= DATA SOURCE (Supabase) =================
+//  DATA SOURCE 
 
 // traffic light (health_analyses) -> status used by this page
 const STATUS_FROM_LIGHT = { green: "normal", yellow: "follow", red: "attention" };
@@ -75,12 +68,7 @@ async function getCrew() {
   }));
 }
 
-/**
- * getMemberHistory(id, days) -> {
- *   series: { hr|spo2|bp|glucose|temp: { unit, range: {min, max}, points: [{ label, value }] } },
- *   records: [{ datetime, indicator, value, source: "sensor"|"manual", notes }]
- * }
- */
+
 async function getMemberHistory(id, days) {
   const sinceDate = new Date(Date.now() - days * 86400000);
   const since = sinceDate.toISOString();  // full UTC timestamp for taken_at
@@ -126,11 +114,7 @@ async function getMemberHistory(id, days) {
   return { series, records };
 }
 
-// ================= INDICATORS =================
-// range = GREEN zone of the health engine (backend/ml/health_engine.py):
-//   HR 50-100 bpm at rest (AHA) · SpO2 >= 95 % (BTS) · systolic 90-129 mmHg
-//   (ACC/AHA 2017, ESC/ESH 2018) · glucose 55-180 mg/dL (Endocrine Society / ADA)
-//   temperature < 38 °C = 37 °C + 1.0 (Stahn 2017); 35 °C = hypothermia threshold
+// INDICATORS
 const INDICATORS = {
   hr: { label: "Heart rate", unit: "BPM", column: "heart_rate", range: { min: 50, max: 100 } },
   spo2: { label: "SpO₂", unit: "%", column: "spo2", range: { min: 95, max: 100 } },
@@ -139,7 +123,7 @@ const INDICATORS = {
   temp: { label: "Body temperature", unit: "°C", column: "temperature", range: { min: 35, max: 38 } },
 };
 
-// ================= STATE =================
+// STATE 
 let crew = [];
 let selectedId = null;
 let indicator = "hr";
@@ -147,7 +131,7 @@ let days = 7;
 let history = null;
 let requestId = 0;
 
-// ================= RENDER =================
+// RENDER 
 function showCrew() {
   const box = $("crew-list");
   if (!crew.length) {
@@ -274,7 +258,7 @@ function showHistory() {
   showRecords(history.records);
 }
 
-// ================= ACTIONS =================
+
 async function loadHistory() {
   if (selectedId == null) return;
   const current = ++requestId;
@@ -326,7 +310,7 @@ $("period-chips").addEventListener("click", (e) => {
   loadHistory();
 });
 
-// ================= START =================
+// START 
 (async function init() {
   const profile = await requireRole(["admin"]);  // auth_guard.js: others -> principal_page.html
   if (!profile) return;

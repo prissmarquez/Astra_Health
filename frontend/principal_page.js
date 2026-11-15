@@ -1,6 +1,4 @@
-// Home page: fills the dashboard with the signed-in user's real data.
-// Uses supabaseClient and getProfile from supabase_client.js.
-// DB data is always written with textContent, never innerHTML (avoids XSS).
+
 
 const LIGHT = {
   green: { color: "var(--green)", text: "No alerts" },
@@ -8,9 +6,7 @@ const LIGHT = {
   red: { color: "var(--red)", text: "Needs attention" },
 };
 
-// "In range" = the GREEN zone of the health engine (backend/ml/health_engine.py)
-//   HR 50-100 bpm at rest (AHA) · SpO2 >= 95 % (BTS) · glucose 55-180 mg/dL
-//   (Endocrine Society / ADA) · systolic 90-129 mmHg (ACC/AHA 2017, ESC/ESH 2018)
+
 const CHART_INDICATORS = [
   { id: "ind-hr", label: "HR", max: 140, min_ok: 50, max_ok: 100 },
   { id: "ind-spo2", label: "SpO₂", max: 100, min_ok: 95, max_ok: 100 },
@@ -23,14 +19,14 @@ function setText(id, text) {
   if (el) el.textContent = text;
 }
 
-// ---------- 1) Header: who am I ----------
+
 
 function fillHeader(profile) {
   setText("nombre-usuario", profile.name || profile.astronaut_code);
   setText("rol-usuario", `${profile.astronaut_code || ""} · ${profile.role}`);
 }
 
-// ---------- 2) My latest values (daily_readings: one row per day) ----------
+
 
 async function fillLatestValues(profile) {
   const { data, error } = await supabaseClient
@@ -53,7 +49,7 @@ async function fillLatestValues(profile) {
     ? `${Math.round(r.systolic_pressure)}/${Math.round(r.diastolic_pressure)} mmHg` : "--");
 }
 
-// ---------- 3) My latest traffic light (health_analyses) ----------
+
 
 async function fillHealthStatus(profile) {
   const { data, error } = await supabaseClient
@@ -73,8 +69,7 @@ async function fillHealthStatus(profile) {
     return;
   }
 
-  // The ring shows the traffic light, not a percentage: the engine gives
-  // green / yellow / red, not a score, so we don't invent one.
+
   const light = LIGHT[a.traffic_light];
   setText("salud-pct", a.traffic_light.toUpperCase());
   setText("salud-texto", light.text);
@@ -92,11 +87,7 @@ async function fillHealthStatus(profile) {
   }
 }
 
-// ---------- 4) Team health status ----------
-// What RLS lets each role see:
-//   crew   -> crewmates' names (profiles), but NOT their traffic light
-//   leader -> crewmates' names + their traffic light (health_analyses of the crew)
-//   admin  -> everyone (all profiles and all analyses)
+
 
 async function fillTeam(profile) {
   const box = document.getElementById("equipo-lista");
@@ -149,8 +140,7 @@ async function fillTeam(profile) {
   }
 }
 
-// ---------- 5) Chart (your function, with the engine's ranges) ----------
-// innerHTML is OK here: it only receives numbers (parseFloat) and fixed labels.
+
 
 function renderIndicatorsChart() {
   const box = document.getElementById("barras");
@@ -172,7 +162,6 @@ function renderIndicatorsChart() {
   }).join("");
 }
 
-// ---------- Start ----------
 
 connectLogoutButton();  // from supabase_client.js
 

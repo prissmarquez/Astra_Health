@@ -1,6 +1,4 @@
-/* ===== Check-in page =====
-   Uses the colors and classes from styles.css
-   (--card, --border, --blue, .card, .header, .nav, .btn-principal) */
+
 
 /* Page layout: header, log, footer, nav */
 .checkin-page {
@@ -169,7 +167,7 @@
   color: var(--green);
 }
 
-/* ===== Exercise yes / no ===== */
+
 .exercise-box {
   display: flex;
   align-items: center;
@@ -191,7 +189,7 @@
   accent-color: var(--blue);
 }
 
-/* ===== Sleep fields ===== */
+
 .sleep-box strong {
   display: block;
   margin-bottom: 8px;
@@ -228,7 +226,7 @@
   border-color: var(--blue);
 }
 
-/* ===== PANAS card (link to panas.html) ===== */
+
 .panas-link {
   display: flex;
   align-items: center;
@@ -274,7 +272,7 @@
   color: var(--red);
 }
 
-/* ===== Tip + finish button ===== */
+
 .log-footer {
   display: flex;
   gap: 14px;

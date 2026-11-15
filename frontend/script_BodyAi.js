@@ -1,29 +1,14 @@
-// =====================================================
-//  BODY AI PAGE (crew member view)
-//  Teammate: only edit getAnalysis() and generateImage().
-// =====================================================
+
 
 const $ = (id) => document.getElementById(id);
 
-// ================= DATA SOURCE (TEAMMATE EDITS HERE) =================
+// DATA SOURCE (TEAMMATE EDITS HERE) 
 // API_URL comes from supabase_client.js (our FastAPI server).
 const BODY_API_URL = API_URL + "/body";   // GET /body/{system} in backend/main.py
 const USE_SAMPLE_DATA = false;   // true = example data, without the backend
 const USE_SAMPLE_IMAGE = true;   // the image endpoint does not exist yet
 
-/**
- * getAnalysis(system) -> Promise of:
- * {
- *   updatedAgo: "2 min ago",
- *   summary:    "General AI text shown in the AI analysis box",
- *   status:     "stable" | "watch" | "attention",
- *   metric:     { label, value, unit, trend, points: [numbers] },   // trend e.g. "+8% vs. average"
- *   explanation:"Detail of the selected system",
- *   recommendations: ["...", "..."]
- * }
- * system: "cardio" | "resp" | "digest" | "muscle" | "nerv" | "immune" | "thermo"
- * Every text is rendered with textContent, so the AI text is never run as HTML.
- */
+
 async function getAnalysis(system) {
   if (USE_SAMPLE_DATA) return sampleAnalysis(system);
   const token = await getAccessToken();             // supabase_client.js
@@ -35,10 +20,7 @@ async function getAnalysis(system) {
   return res.json();
 }
 
-/**
- * generateImage(prompt) -> Promise of { url } (or { dataUrl })
- * Keep the image API key on the BACKEND, never in this file.
- */
+
 async function generateImage(prompt) {
   if (USE_SAMPLE_IMAGE) {
     await new Promise((r) => setTimeout(r, 800));       // simulates waiting
@@ -53,7 +35,7 @@ async function generateImage(prompt) {
   return res.json();
 }
 
-// ================= SYSTEMS =================
+//  SYSTEMS 
 const SYSTEMS = {
   cardio: "Cardiovascular system",
   resp: "Respiratory system",
@@ -64,7 +46,7 @@ const SYSTEMS = {
   thermo: "Thermoregulation",
 };
 
-// ================= SAMPLE DATA (delete when the AI works) =================
+
 function sampleAnalysis(system) {
   return {
     updatedAgo: "2 min ago",
@@ -76,7 +58,7 @@ function sampleAnalysis(system) {
   };
 }
 
-// ================= SAFE HELPERS =================
+
 const STATUS = {
   stable: "Stable",
   watch: "Under observation",
@@ -106,7 +88,7 @@ function drawSpark(points) {
   box.append(svg);
 }
 
-// ================= RENDER =================
+
 function showAnalysis(system, d) {
   $("ai-updated").textContent = d.updatedAgo ? "Updated: " + d.updatedAgo : "--";
   $("ai-summary").className = "ai-text";
@@ -142,7 +124,7 @@ function showState(text, cls) {
   p.textContent = text;
 }
 
-// ================= SELECT A SYSTEM =================
+
 let requestId = 0;
 
 async function selectSystem(system) {
@@ -167,8 +149,8 @@ $("systems-list").addEventListener("click", (e) => {
   if (btn && Object.hasOwn(SYSTEMS, btn.dataset.system)) selectSystem(btn.dataset.system);
 });
 
-// ================= AI IMAGE =================
-// only allow http(s), relative paths and data:image (blocks javascript: etc.)
+
+
 function safeImageSrc(src) {
   if (typeof src !== "string") return "";
   if (/^data:image\/(png|jpeg|webp|gif);base64,/i.test(src)) return src;
