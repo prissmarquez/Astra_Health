@@ -11,7 +11,10 @@ backend/DataBase/
 │   ├── 004_lock_trigger_functions.sql   hides trigger functions from the API
 │   ├── 005_crews.sql            crews: one crew per astronaut
 │   ├── 006_leader_role.sql      adds the 'leader' role
-│   └── 007_crew_limits_and_leader.sql   4-member limit, leader rules, crew visibility, realtime
+│   ├── 007_crew_limits_and_leader.sql   4-member limit, leader rules, crew visibility, realtime
+│   ├── 008_exercising_flag.sql  exercising flag on measurements (used by the ML)
+│   ├── 009_rename_indicators_to_ml.sql  indicator codes renamed to the ML names
+│   └── 010_health_analyses.sql  stored ML results (traffic light, reasons) per analysis
 ├── connection.py                Supabase client (publishable key + user token)
 ├── measurements.py              functions for Backend 2
 ├── check_connection.py          connection and security check
@@ -34,6 +37,7 @@ backend/DataBase/
 | Mission day | `mission_day` (0 = launch day, negative = pre-flight) | computed in the views |
 | Adaptation (0-1) | `adaptation` | `daily_adaptation` |
 | Crew | `crew_id` (short code, e.g. `ASTRA-A`) | `profiles` (current) and `measurements` (at the time) |
+| Exercising | `exercising` (true / false, default false) | `measurements` |
 
 ## Data model
 
@@ -48,15 +52,16 @@ backend/DataBase/
 | `indicators` | Fixed list, each with a single unit, a data-entry range and its usual `entry_method`. |
 | `sensors` | Astroskin, Oura Ring, continuous glucose monitor, mood questionnaire, manual entry and the simulator, each with where it has flown. |
 | `sensor_indicators` | Which indicator each sensor measures and with what method. |
-| `measurements` | One row per indicator: sensor, value, status, date and time, source. **The mission is assigned automatically** from the date. |
+| `measurements` | One row per indicator: sensor, value, status, date and time, source, `exercising`. **The mission is assigned automatically** from the date. `exercising = true` means the reading was taken during or right after exercise; the ML then uses its exercise ranges (a high temperature or heart rate is expected and is not compared with the resting baseline). |
 | `daily_adaptation` | Adaptation score 0-1 per astronaut per day. Written only by the backend/ML process. |
+| `health_analyses` | One row per ML analysis (`/analysis`): `traffic_light` (`green` / `yellow` / `red`), `mode` (`startup` / `personal`), `clinical_reasons`, `deviations`, `connections`, `detected_by_ml`, `model_version`, `analyzed_at`. The `id` is the reading's id, so a resend is never duplicated. **Insert only** (medical record). Read: own; the leader also reads analyses taken in their crew; the admin (ground medical team) reads all. Realtime enabled. |
 
 **Views** (virtual tables built from the data above; they respect RLS):
 
 | View | Contents |
 |---|---|
 | `readings_detailed` | One row per measurement with every essential: astronaut, indicator, sensor, value, unit, mission type, phase, date, time, mission day, adaptation. This is the **full history**. |
-| `daily_readings` | **One row per astronaut per day** with the **latest** value of each indicator as a column (`heart_rate`, `hrv`, `spo2`, `systolic_bp`, `diastolic_bp`, `temperature`, `glucose`, `sleep_min`, `mood_positive`, `mood_negative`, `radiation_dose`) plus mission, phase, mission day and adaptation. |
+| `daily_readings` | **One row per astronaut per day** with the **latest** value of each indicator as a column (`heart_rate`, `hrv`, `spo2`, `systolic_pressure`, `diastolic_pressure`, `temperature`, `glucose`, `sleep_min`, `positive_mood`, `negative_mood`, `radiation_dose`) plus mission, phase, mission day and adaptation. `exercising` is the flag of the day's latest temperature, heart rate or HRV reading. |
 
 **Indicators**
 
@@ -65,11 +70,11 @@ backend/DataBase/
 | `heart_rate` | bpm | bluetooth |
 | `hrv` | ms | bluetooth (Astroskin) |
 | `spo2` | % | bluetooth |
-| `systolic_bp` / `diastolic_bp` | mmHg | bluetooth |
+| `systolic_pressure` / `diastolic_pressure` | mmHg | bluetooth |
 | `temperature` | °C | bluetooth |
 | `glucose` | mg/dL | bluetooth |
 | `sleep_min` | minutes | calculated (or typed in) |
-| `mood_positive` / `mood_negative` | 10 to 50 | questionnaire |
+| `positive_mood` / `negative_mood` | 10 to 50 | questionnaire |
 | `radiation_dose` | mGy | manual |
 
 **Phase rules** (with the mission's dates):
