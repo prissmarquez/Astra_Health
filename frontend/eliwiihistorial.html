@@ -35,7 +35,8 @@
           <p class="subtitle">Explore your records and discover trends</p>
 
           <div class="filters">
-            <label>Indicator:
+            <div class="filter-group">
+              <span>Indicator:</span>
               <span class="select-box">
                 <img src="corazon.png" alt="" class="select-icon" id="indicator-icon">
                 <select id="indicator-filter">
@@ -46,8 +47,10 @@
                   <option value="temp" data-unit="°C">Body temperature</option>
                 </select>
               </span>
-            </label>
-            <label>Period:
+            </div>
+
+            <div class="filter-group">
+              <span>Period:</span>
               <span class="select-box">
                 <select id="period-filter">
                   <option value="7">Last 7 days</option>
@@ -55,7 +58,8 @@
                   <option value="30">Last 30 days</option>
                 </select>
               </span>
-            </label>
+            </div>
+
             <button class="btn-borde claro" id="details-btn">View details</button>
           </div>
         </section>
