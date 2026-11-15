@@ -173,6 +173,16 @@ async function logout() {
   window.location.href = "index.html";
 }
 
+// Shows the astronaut's name and "code · role" in the page header.
+// Pages use two id styles (nombre-usuario / user-name); both are supported.
+function fillUserHeader(profile) {
+  if (!profile) return;
+  const nameEl = document.getElementById("nombre-usuario") || document.getElementById("user-name");
+  const roleEl = document.getElementById("rol-usuario") || document.getElementById("user-role");
+  if (nameEl) nameEl.textContent = profile.name || profile.astronaut_code || "Astronaut";
+  if (roleEl) roleEl.textContent = [profile.astronaut_code, profile.role].filter(Boolean).join(" · ");
+}
+
 // Connects #logout-btn on the current page (does nothing if the page has none)
 function connectLogoutButton() {
   const button = document.getElementById("logout-btn");
