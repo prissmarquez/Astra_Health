@@ -5,22 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PANAS - Astra Health</title>
   <!-- Same styles as the dashboard (header, cards, nav) -->
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="../style/styles.css">
   <!-- Styles only for this page -->
-  <link rel="stylesheet" href="panas.css">
+  <link rel="stylesheet" href="../style/panas.css">
   <!-- Shared: Supabase client, connection indicator and role guard -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_client.js"></script>
-  <script src="auth_guard.js"></script>
-  <script src="nav.js"></script>
+  <script src="../services/supabase_client.js"></script>
+  <script src="../services/auth_guard.js"></script>
+  <script src="../services/nav.js"></script>
 </head>
 <body>
   <div class="panas-page">
 
     <!-- HEADER (same as dashboard) -->
     <header class="card header">
-      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
-      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+      <img src="../assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="../assets/profile.png" alt="Profile picture" class="foto-perfil">
 
       <div class="usuario">
         <strong id="nombre-usuario">Username</strong>
@@ -76,6 +76,6 @@
 
   </div>
 
-  <script src="panas.js"></script>
+  <script src="../services/panas.js"></script>
 </body>
 </html>

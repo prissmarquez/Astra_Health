@@ -2,11 +2,11 @@
 const $ = (id) => document.getElementById(id);
 
 const INDICATORS = {
-  hr:      { label: "Heart rate",                unit: "BPM",   column: "heart_rate",        range: { min: 50, max: 100 }, icon: "assets/recourse2.png" },
-  spo2:    { label: "SpO₂",                      unit: "%",     column: "spo2",              range: { min: 95, max: 100 }, icon: "assets/oxigen.png" },
-  bp:      { label: "Blood pressure (systolic)", unit: "mmHg",  column: "systolic_pressure", range: { min: 90, max: 129 }, icon: "assets/BP.jpg",
+  hr:      { label: "Heart rate",                unit: "BPM",   column: "heart_rate",        range: { min: 50, max: 100 }, icon: "../assets/recourse2.png" },
+  spo2:    { label: "SpO₂",                      unit: "%",     column: "spo2",              range: { min: 95, max: 100 }, icon: "../assets/oxigen.png" },
+  bp:      { label: "Blood pressure (systolic)", unit: "mmHg",  column: "systolic_pressure", range: { min: 90, max: 129 }, icon: "../assets/BP.jpg",
              extraColumn: "diastolic_pressure" },
-  glucose: { label: "Glucose",                   unit: "mg/dL", column: "glucose",           range: { min: 55, max: 180 }, icon: "assets/gluco.png" },
+  glucose: { label: "Glucose",                   unit: "mg/dL", column: "glucose",           range: { min: 55, max: 180 }, icon: "../assets/gluco.png" },
   temp:    { label: "Body temperature",          unit: "°C",    column: "temperature",       range: { min: 35, max: 38 },  icon: null },
 };
 

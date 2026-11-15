@@ -1,0 +1,23 @@
+# Secrets: real keys and passwords are NEVER committed. Only .env.example is.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Explanations Claude already wrote, cached on this machine
+# (backend/IA/demo_responses.json IS committed).
+backend/IA/.cache/
+
+# Node
+node_modules/
+
+# macOS
+.DS_Store

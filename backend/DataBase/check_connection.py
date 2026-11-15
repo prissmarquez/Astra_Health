@@ -1,6 +1,6 @@
 """Checks the connection and the security rules with a real test user.
 
-Usage (from backend/DataBase, with .env filled in):
+Usage (from backend/DataBase, with backend/.env filled in):
     python check_connection.py
 
 It leaves ONE simulated measurement behind (is_simulated = true) because

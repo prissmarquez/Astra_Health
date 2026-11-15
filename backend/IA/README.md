@@ -20,8 +20,7 @@ backend/IA/
 ├── run_scenarios.py    runs the 4 cases live; --save creates demo_responses.json
 ├── try_reading.py      type your own values: real ML analysis + explanation
 ├── tests/              automated tests (never call Claude, cost nothing)
-├── requirements.txt
-└── .env.example        variable names, WITHOUT values
+└── requirements.txt    (variables: backend/.env.example)
 ```
 
 ## Setup
@@ -31,7 +30,7 @@ cd backend/IA
 python -m venv .venv
 .venv\Scripts\activate          # Windows (macOS/Linux: source .venv/bin/activate)
 pip install -r requirements.txt
-copy .env.example .env          # then paste your key in .env
+copy ..\.env.example ..\.env    # then paste your key in backend/.env
 ```
 
 ## Use from FastAPI
@@ -95,5 +94,5 @@ Before the presentation: `python check_ai.py`, then
 To switch to Opus 5.5 change only that line to `claude-opus-5-5`.
 Set a monthly spend limit in console.anthropic.com -> Limits.
 
-The key goes in `.env` locally and in Render's "Environment" tab in the cloud.
+The key goes in `backend/.env` locally and in Render's "Environment" tab in the cloud.
 **Never in the front-end** (anyone could read it with F12).

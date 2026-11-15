@@ -6,6 +6,7 @@ from typing import Literal
 
 import joblib
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -13,6 +14,9 @@ from pydantic import AwareDatetime, BaseModel, Field, field_validator
 
 # ml/, DataBase/ and IA/ are plain script folders, so we add them to the import path
 BACKEND = Path(__file__).resolve().parent
+# backend/.env for local runs; on Railway the file is absent and the
+# variables come from the environment (they are never overridden).
+load_dotenv(BACKEND / ".env")
 sys.path.insert(0, str(BACKEND / "ml"))
 sys.path.insert(0, str(BACKEND / "DataBase"))
 sys.path.insert(0, str(BACKEND / "IA"))
@@ -579,7 +583,7 @@ def create_crew_endpoint(
 
 
 class BodyAnalysis(BaseModel):
-    """GET /body/{system}: what frontend/script_BodyAi.js shows (same field names)."""
+    """GET /body/{system}: what frontend/services/script_BodyAi.js shows (same field names)."""
 
     updatedAgo: str = ""  # e.g. "2 min ago"
     summary: str  # "AI analysis" box

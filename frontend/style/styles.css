@@ -17,7 +17,7 @@ body {
   min-height: 100vh;
   color: var(--text);
   font-family: system-ui, sans-serif;
-  background-image: url("assets/360_F_556507108_gZT9lEkdhpmc9mgWsDHXSRN6z5WwstiU.jpg");
+  background-image: url("../assets/360_F_556507108_gZT9lEkdhpmc9mgWsDHXSRN6z5WwstiU.jpg");
   background-size: cover;
   background-position: center;
   background-attachment: fixed;

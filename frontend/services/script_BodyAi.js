@@ -6,7 +6,6 @@ const $ = (id) => document.getElementById(id);
 // API_URL comes from supabase_client.js (our FastAPI server).
 const BODY_API_URL = API_URL + "/body";   // GET /body/{system} in backend/main.py
 const USE_SAMPLE_DATA = false;   // true = example data, without the backend
-const USE_SAMPLE_IMAGE = true;   // the image endpoint does not exist yet
 
 
 async function getAnalysis(system) {
@@ -20,20 +19,6 @@ async function getAnalysis(system) {
   return res.json();
 }
 
-
-async function generateImage(prompt) {
-  if (USE_SAMPLE_IMAGE) {
-    await new Promise((r) => setTimeout(r, 800));       // simulates waiting
-    return { url: "assets/body.png" };                   // example image
-  }
-  const res = await fetch(`${BODY_API_URL}/image`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
-  });
-  if (!res.ok) throw new Error("Status " + res.status);
-  return res.json();
-}
 
 //  SYSTEMS 
 const SYSTEMS = {
@@ -150,47 +135,6 @@ $("systems-list").addEventListener("click", (e) => {
 });
 
 
-
-function safeImageSrc(src) {
-  if (typeof src !== "string") return "";
-  if (/^data:image\/(png|jpeg|webp|gif);base64,/i.test(src)) return src;
-  try {
-    const u = new URL(src, location.href);
-    return ["http:", "https:", "file:"].includes(u.protocol) ? src : "";
-  } catch { return ""; }
-}
-
-function setImageMsg(text, type = "") {
-  const p = $("image-msg");
-  p.textContent = text;
-  p.className = "form-msg" + (type ? " " + type : "");
-}
-
-$("image-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const prompt = $("image-prompt").value.trim();
-  if (!prompt) return setImageMsg("Write what you want to generate.", "error");
-
-  const btn = $("image-btn");
-  btn.disabled = true;
-  setImageMsg("Generating...");
-  try {
-    const data = await generateImage(prompt);
-    const src = safeImageSrc(data.url || data.dataUrl);
-    if (!src) throw new Error("Invalid image");
-    const img = document.createElement("img");
-    img.alt = prompt;
-    img.src = src;
-    img.addEventListener("error", () => setImageMsg("The image could not be loaded.", "error"));
-    $("image-box").replaceChildren(img);
-    setImageMsg("Done.", "ok");
-  } catch (err) {
-    console.error("Could not generate image:", err);
-    setImageMsg("Could not generate the image. Try again.", "error");
-  } finally {
-    btn.disabled = false;
-  }
-});
 
 selectSystem("cardio");
 // Only crew members and leaders (auth_guard.js; no session -> index.html), then the header
