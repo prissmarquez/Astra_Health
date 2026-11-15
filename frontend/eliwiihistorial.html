@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astra Health - History</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="historial.css">
+</head>
+<body>
+  <div class="page">
+
+    <!-- HEADER (same as dashboard) -->
+    <header class="card header">
+      <img src="nasa.png" alt="NASA" class="logo-nasa">
+      <img src="perfil.png" alt="Profile picture" class="foto-perfil">
+      <div class="usuario">
+        <strong id="user-name">User name</strong>
+        <small id="user-role">Role / Mission</small>
+      </div>
+      <div class="bloque alerta">
+        <small>Next check-in in:</small>
+        <strong id="countdown" class="reloj">--:--:--</strong>
+      </div>
+      <div class="conectado"><span class="punto"></span> Connected</div>
+    </header>
+
+    <div class="history-layout">
+
+      <!-- LEFT COLUMN -->
+      <main class="history-main">
+
+        <section class="card">
+          <h2 class="title">Health history</h2>
+          <p class="subtitle">Explore your records and discover trends</p>
+
+          <div class="filters">
+            <label>Indicator:
+              <span class="select-box">
+                <img src="corazon.png" alt="" class="select-icon" id="indicator-icon">
+                <select id="indicator-filter">
+                  <option value="hr" data-unit="BPM">Heart rate</option>
+                  <option value="spo2" data-unit="%">SpO₂</option>
+                  <option value="bp" data-unit="mmHg">Blood pressure</option>
+                  <option value="glucose" data-unit="mg/dL">Glucose</option>
+                  <option value="temp" data-unit="°C">Body temperature</option>
+                </select>
+              </span>
+            </label>
+            <label>Period:
+              <span class="select-box">
+                <select id="period-filter">
+                  <option value="7">Last 7 days</option>
+                  <option value="14">Last 14 days</option>
+                  <option value="30">Last 30 days</option>
+                </select>
+              </span>
+            </label>
+            <button class="btn-borde claro" id="details-btn">View details</button>
+          </div>
+        </section>
+
+        <!-- CHART -->
+        <section class="card">
+          <div class="chart-head">
+            <h3 id="chart-title">Heart rate</h3>
+            <div class="legend">
+              <span><i class="line"></i> My record</span>
+              <span><i class="line dashed"></i> Recommended range</span>
+            </div>
+          </div>
+          <div id="chart" class="chart">
+            <p class="empty">No data loaded</p>
+          </div>
+        </section>
+
+        <!-- DETAILED LOG -->
+        <section class="card">
+          <h3>Detailed log</h3>
+          <table class="table">
+            <thead>
+              <tr><th>Date &amp; time</th><th>Indicator</th><th>Value</th><th>Source</th><th>Notes</th></tr>
+            </thead>
+            <tbody id="records-body">
+              <tr><td colspan="5" class="empty">No records</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div class="footer-row">
+          <div class="card source-card">Data source: <span id="data-source">--</span></div>
+          <button class="btn-borde claro" id="export-btn">Export history ⬇</button>
+        </div>
+      </main>
+
+      <!-- RIGHT COLUMN: TEAM -->
+      <aside class="card team-card">
+        <h3 id="team-title">Team heart rate</h3>
+        <div id="team-list" class="team-list">
+          <p class="empty">No data loaded</p>
+        </div>
+        <ul class="status-legend">
+          <li><i class="dot normal"></i> Normal</li>
+          <li><i class="dot follow"></i> Follow-up</li>
+          <li><i class="dot attention"></i> Needs attention</li>
+        </ul>
+      </aside>
+    </div>
+
+    <!-- NAVIGATION -->
+    <nav class="card nav">
+      <a href="eliwii.html">Home</a>
+      <a class="activo" href="eliwiihistorial.html">History</a>
+      <a>Manuals</a>
+      <a>Settings</a>
+    </nav>
+  </div>
+
+  <script src="historial.js"></script>
+</body>
+</html>
