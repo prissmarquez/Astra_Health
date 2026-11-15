@@ -11,14 +11,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import AwareDatetime, BaseModel, Field, field_validator
 
-# ml/ and DataBase/ are plain script folders, so we add them to the import path
+# ml/, DataBase/ and IA/ are plain script folders, so we add them to the import path
 BACKEND = Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND / "ml"))
 sys.path.insert(0, str(BACKEND / "DataBase"))
+sys.path.insert(0, str(BACKEND / "IA"))
 
 from connection import admin_client, public_client, service_client, user_client  # noqa: E402
 from health_engine import IND, WINDOW, analyze  # noqa: E402
 from measurements import list_daily_readings, save_measurements  # noqa: E402
+from body_systems import SYSTEMS, focus, focused, system_metric, system_status, updated_ago  # noqa: E402
+from explainer import explain  # noqa: E402
+from validation import error_message, out_of_range  # noqa: E402
 
 # DB column names -> names the model was trained with (only the ones that differ)
 DB_TO_ML = {
@@ -55,7 +59,7 @@ app = FastAPI(title="Astra Health API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],  # GET: /health, /body
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -245,6 +249,11 @@ def history_frame(rows, astronaut_id, mission_types):
     return df[["astronaut", "day", "adaptation", *IND]].reset_index(drop=True)
 
 
+def impossible_values(vitals):
+    """Values outside the ranges of the DB indicators table (sensor/entry errors)."""
+    return out_of_range({c: getattr(vitals, c) for c in IND})
+
+
 def run_analysis(token, vitals, astronaut_id, day, mission_types):
     """Reads the last 14 days from Supabase and runs the health engine."""
     try:
@@ -358,6 +367,16 @@ def analysis(
 ):
     """Preview: analyses one reading without saving anything."""
     token = require_token(credentials)
+    problems = impossible_values(reading)
+    if problems:  # e.g. 0 bpm: a sensor error, not a "low" value
+        raise HTTPException(
+            422,
+            {
+                "error": "measurement_error",
+                "message": error_message(problems),
+                "invalid_values": problems,
+            },
+        )
     astronaut_id = reading.astronaut_id or get_user_id(token)
     day = reading.day or datetime.now(timezone.utc).date()
     return run_analysis(token, reading, astronaut_id, day, get_mission_types(token))
@@ -378,6 +397,10 @@ def sync(
 
     results = []
     for reading in sorted(readings, key=lambda r: r.taken_at):
+        problems = impossible_values(reading)
+        if problems:  # the DB would reject it too; give a clear message instead
+            results.append(SyncItem(id=reading.id, ok=False, error=error_message(problems)))
+            continue
         try:
             inserted = save_measurements(token, to_measurements(reading))
             day = reading.taken_at.astimezone(timezone.utc).date()
@@ -506,3 +529,95 @@ def create_account(
 
     return CreatedUser(**profile)
 
+class BodyAnalysis(BaseModel):
+    """GET /body/{system}: what frontend/script_BodyAi.js shows (same field names)."""
+
+    updatedAgo: str = ""  # e.g. "2 min ago"
+    summary: str  # "AI analysis" box
+    status: Literal["stable", "watch", "attention"]
+    metric: dict = {}  # {label, value, unit, trend, points}; empty = no sensor
+    explanation: str = ""
+    recommendations: list[str] = []
+    source: str  # ai / cache / demo / template / measurement_error / no_sensor / no_data
+
+
+def latest_analysis(token, astronaut_id):
+    """Newest traffic light saved by /sync (health_analyses, readable by its owner)."""
+    rows = (
+        user_client(token)
+        .table("health_analyses")
+        .select(
+            "day, traffic_light, mode, clinical_reasons, deviations, connections,"
+            " detected_by_ml, analyzed_at"
+        )
+        .eq("astronaut_id", astronaut_id)
+        .order("day", desc=True)
+        .order("analyzed_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+    return rows[0] if rows else None
+
+
+@app.get("/body/{system}", response_model=BodyAnalysis)
+def body(
+    system: str, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
+):
+    """Body AI screen: the AI explains the latest analysis for one body system.
+    Uses what /sync already saved; one Claude call per request (~$0.0002)."""
+    token = require_token(credentials)
+    if system not in SYSTEMS:
+        raise HTTPException(404, f"Unknown system. Options: {', '.join(SYSTEMS)}")
+    info = SYSTEMS[system]
+    if not info["indicators"]:
+        return BodyAnalysis(
+            summary=f"No sensor measures the {info['name'].lower()} yet.",
+            status="stable",
+            explanation="This system has no readings in Astra Health, so there is nothing to analyse.",
+            source="no_sensor",
+        )
+
+    astronaut_id = get_user_id(token)
+    try:
+        analysis = latest_analysis(token, astronaut_id)
+        rows = list_daily_readings(token, astronaut_id=astronaut_id, limit=WINDOW + 1)
+    except Exception as error:
+        raise HTTPException(502, f"Could not read Supabase: {error}") from error
+    if analysis is None or not rows:
+        return BodyAnalysis(
+            summary="No readings yet. Complete a check-in to see your analysis.",
+            status="stable",
+            source="no_data",
+        )
+
+    rows = [{DB_TO_ML.get(k, k): v for k, v in r.items()} for r in rows]
+    row = next((r for r in rows if r["day"] == analysis["day"]), rows[0])
+    verdict = {
+        k: analysis[k]
+        for k in ("traffic_light", "mode", "clinical_reasons", "deviations",
+                  "connections", "detected_by_ml")
+    }
+    status = system_status(system, verdict)
+    values = {c: row[c] for c in IND if row.get(c) is not None}
+    if out_of_range(values):  # impossible value anywhere: never hide it
+        ai_verdict, ai_values = verdict, values
+    else:
+        ai_verdict, ai_values = focused(system, verdict, values)
+    context = {
+        "exercising": bool(row.get("exercising")),
+        "values": ai_values,
+        "focus": {**focus(system), "status": status},
+    }
+    text = explain(ai_verdict, context)
+    if text["source"] == "measurement_error":
+        status = "attention"
+    return BodyAnalysis(
+        updatedAgo=updated_ago(analysis.get("analyzed_at")),
+        summary=text["summary"],
+        status=status,
+        metric=system_metric(system, rows),
+        explanation=text["detail"],
+        recommendations=text["recommendations"],
+        source=text["source"],
+    )

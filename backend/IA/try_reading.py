@@ -2,7 +2,7 @@
 
     python try_reading.py                                   # asks for each value
     python try_reading.py --temperature 38.6 --heart-rate 130 --exercising
-    python try_reading.py --temperature 38.6 --heart-rate 130 --language es
+    python try_reading.py --temperature 38.6 --heart-rate 130   # same, no exercise
     python try_reading.py --temperature 39 --no-ai          # only the template
 
 The reading is added to the history of a simulated astronaut
@@ -25,6 +25,7 @@ from health_engine import IND, NAMES, analyze  # noqa: E402
 
 from config import load_settings  # noqa: E402
 from explainer import Explainer  # noqa: E402
+from validation import describe, out_of_range  # noqa: E402
 
 # Values you can change: (indicator in the ML, command-line flag, unit)
 FIELDS = [
@@ -60,7 +61,6 @@ def main() -> int:
     for _, flag, unit in FIELDS:
         parser.add_argument(f"--{flag}", type=float, help=unit)
     parser.add_argument("--exercising", action="store_true", help="the reading was taken during/after exercise")
-    parser.add_argument("--language", choices=["en", "es"], default=None)
     parser.add_argument("--no-ai", action="store_true", help="do not call Claude (template only)")
     args = parser.parse_args()
 
@@ -92,6 +92,15 @@ def main() -> int:
                 reading[name] = value
         reading["exercising"] = args.exercising
 
+    problems = out_of_range({name: reading[name] for name, _, _ in FIELDS})
+    if problems:  # sensor/entry error: do not run the ML or the AI on it
+        print("\n⚠️  Error measuring the data")
+        for problem in problems:
+            print(f"   {describe(problem)}")
+        print("   This looks like a sensor or entry error, not a change in health.")
+        print("   Nothing was analysed. Check the sensor and take the reading again.")
+        return 2
+
     analysis = analyze(history, reading, package)
 
     print("\n=== ML result (backend/ml/health_engine.py) ===")
@@ -110,7 +119,7 @@ def main() -> int:
         "exercising": bool(reading["exercising"]),
         "values": {name: round(float(reading[name]), 1) for name, _, _ in FIELDS},
     }
-    result = Explainer(settings).explain(analysis, context, args.language)
+    result = Explainer(settings).explain(analysis, context)
 
     print(f"\n=== Explanation (source: {result['source']}) ===")
     print(result["summary"])
