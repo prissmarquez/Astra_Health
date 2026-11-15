@@ -13,7 +13,7 @@ from connection import user_client
 
 ALLOWED_FIELDS = {
     "id", "indicator", "sensor_id", "status", "value", "taken_at", "source",
-    "mission_id", "context", "is_simulated", "repeats_id",
+    "mission_id", "context", "is_simulated", "repeats_id", "exercising",
 }
 REQUIRED_FIELDS = {"id", "indicator", "sensor_id", "taken_at", "source"}
 SOURCES = {"bluetooth", "system", "calculated", "questionnaire", "manual"}
@@ -25,6 +25,8 @@ def new_measurement(indicator: str, sensor_id: str, value: float | None,
 
     source: how the value got in - bluetooth, system, calculated, questionnaire or manual.
     The mission, phase and mission day are filled in by the database.
+    Pass exercising=True if the astronaut was exercising (or had just finished)
+    when the reading was taken; the ML then applies its exercise ranges.
     """
     if source not in SOURCES:
         raise ValueError(f"source must be one of {sorted(SOURCES)}")
