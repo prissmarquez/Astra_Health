@@ -6,6 +6,8 @@ Built for the [NASA Space Apps Challenge 2026](https://www.spaceappschallenge.or
 🎞️ **Demo (slides):** [ADD CANVA VIEW-ONLY LINK HERE]
 🔗 **Live app:** https://astrahealth.cooking · Demo account: [ADD CODE] / [ADD PASSWORD]
 
+📄 **Project documentation:** [Read the document on Google Docs](https://docs.google.com/document/d/1m8DkLUc9CyhrAM3Dl_T38szfGQln6zldxLg-2gMiEJ8/edit?usp=sharing)
+
 ---
 
 ## Summary
