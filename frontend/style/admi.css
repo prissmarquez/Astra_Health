@@ -181,3 +181,23 @@
 @media (max-width: 600px) {
   .create-user-form { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* CREATE CREW + CREATE MISSION side by side (stacked on narrow screens) */
+
+.admin-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-split .create-user-form {
+  grid-template-columns: 110px minmax(0, 1fr);
+}
+
+@media (max-width: 900px) {
+  .admin-split { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .admin-split .create-user-form { grid-template-columns: minmax(0, 1fr); }
+}
