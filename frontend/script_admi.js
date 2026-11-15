@@ -6,10 +6,40 @@
 
 const $ = (id) => document.getElementById(id);
 
-// Escapes text from the database before it goes into innerHTML (avoids XSS)
-function esc(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+// SECURITY: data from the database is ALWAYS shown with textContent
+// or setAttribute, never with innerHTML. This way, if a note or a name
+// contains HTML or <script>, it is shown as plain text and never runs.
+
+// Creates an element with an optional class and text (text is safe)
+function makeEl(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined && text !== null) el.textContent = text;
+  return el;
+}
+
+// Shows a simple message (e.g. "No records") inside a box
+function showEmpty(box, text) {
+  box.replaceChildren(makeEl("p", "empty", text));
+}
+
+// Only these values are allowed as CSS classes (anything else is ignored)
+const ALLOWED_SOURCES = ["sensor", "manual"];
+const ALLOWED_STATUS = ["normal", "follow", "attention", "none"];
+
+function safeClass(value, allowed) {
+  return allowed.includes(value) ? value : "";
+}
+
+// Creates an SVG element and sets its attributes
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function makeSvg(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const name in attrs) {
+    el.setAttribute(name, attrs[name]);
+  }
+  return el;
 }
 
 // ================= DATA SOURCE (Supabase) =================
@@ -119,25 +149,42 @@ let requestId = 0;
 // ================= RENDER =================
 function showCrew() {
   const box = $("crew-list");
-  if (!crew.length) { box.innerHTML = '<p class="empty">No crew members</p>'; return; }
-  box.innerHTML = crew.map((m) => `
-    <div class="team-item ${m.id === selectedId ? "active" : ""}" data-id="${esc(m.id)}">
-      <div class="avatar">${esc(m.name[0])}</div>
-      <div class="info"><strong>${esc(m.name)}</strong><div class="role">${esc(m.role)}</div></div>
-      <div class="value"><i class="dot ${m.status}"></i></div>
-    </div>`).join("");
-  box.querySelectorAll(".team-item").forEach((el) =>
-    el.addEventListener("click", () => selectMember(el.dataset.id)));  // uuid: keep as text
+  if (!crew.length) {
+    showEmpty(box, "No crew members");
+    return;
+  }
+
+  box.replaceChildren(); // clear the list
+
+  crew.forEach((m) => {
+    const item = makeEl("div", "team-item" + (m.id === selectedId ? " active" : ""));
+    item.dataset.id = m.id;   // uuid: keep as text
+
+    const name = m.name || "?";
+    item.appendChild(makeEl("div", "avatar", name[0]));
+
+    const info = makeEl("div", "info");
+    info.appendChild(makeEl("strong", "", name));
+    info.appendChild(makeEl("div", "role", m.role));
+    item.appendChild(info);
+
+    const value = makeEl("div", "value");
+    value.appendChild(makeEl("i", "dot " + safeClass(m.status, ALLOWED_STATUS)));
+    item.appendChild(value);
+
+    item.addEventListener("click", () => selectMember(m.id));
+    box.appendChild(item);
+  });
 }
 
 function showChart(chart) {
   const box = $("chart");
   if (!chart || !chart.points || !chart.points.length) {
-    box.innerHTML = '<p class="empty">No data for this period</p>';
+    showEmpty(box, "No data for this period");
     return;
   }
   const W = 600, H = 230, L = 40, R = 15, T = 15, B = 30;
-  const vals = chart.points.map((p) => p.value);
+  const vals = chart.points.map((p) => Number(p.value));
   const lo = Math.min(...vals, chart.range ? chart.range.min : Infinity);
   const hi = Math.max(...vals, chart.range ? chart.range.max : -Infinity);
   const pad = (hi - lo) * 0.1 || 1;
@@ -145,39 +192,78 @@ function showChart(chart) {
   const x = (i) => L + (i * (W - L - R)) / Math.max(chart.points.length - 1, 1);
   const y = (v) => T + (1 - (v - min) / (max - min)) * (H - T - B);
 
-  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  const svg = makeSvg("svg", { viewBox: `0 0 ${W} ${H}` });
+
+  // Horizontal grid lines + value labels
   for (let i = 0; i <= 4; i++) {
     const v = min + ((max - min) * i) / 4;
-    svg += `<line class="axis" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>
-            <text class="label" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${Math.round(v * 10) / 10}</text>`;
+    svg.appendChild(makeSvg("line", { class: "axis", x1: L, x2: W - R, y1: y(v), y2: y(v) }));
+    const label = makeSvg("text", { class: "label", x: L - 6, y: y(v) + 4, "text-anchor": "end" });
+    label.textContent = Math.round(v * 10) / 10;
+    svg.appendChild(label);
   }
+
+  // Green zone band
   if (chart.range) {
-    svg += `<rect class="range-band" x="${L}" y="${y(chart.range.max)}" width="${W - L - R}" height="${y(chart.range.min) - y(chart.range.max)}"/>`;
+    svg.appendChild(makeSvg("rect", {
+      class: "range-band",
+      x: L,
+      y: y(chart.range.max),
+      width: W - L - R,
+      height: y(chart.range.min) - y(chart.range.max)
+    }));
   }
-  const path = chart.points.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.value)}`).join(" ");
-  svg += `<path class="series" d="${path}"/>`;
+
+  // Line
+  const path = vals.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" ");
+  svg.appendChild(makeSvg("path", { class: "series", d: path }));
+
+  // Points + day labels (text from the database -> textContent)
   chart.points.forEach((p, i) => {
-    svg += `<circle class="data-point" cx="${x(i)}" cy="${y(p.value)}" r="4.5"><title>${esc(p.label)} - ${p.value} ${esc(chart.unit)}</title></circle>
-            <text class="label" x="${x(i)}" y="${H - 8}" text-anchor="middle">${esc(p.label)}</text>`;
+    const circle = makeSvg("circle", { class: "data-point", cx: x(i), cy: y(vals[i]), r: 4.5 });
+    const tooltip = makeSvg("title", {});
+    tooltip.textContent = `${p.label} - ${p.value} ${chart.unit || ""}`;
+    circle.appendChild(tooltip);
+    svg.appendChild(circle);
+
+    const dayLabel = makeSvg("text", { class: "label", x: x(i), y: H - 8, "text-anchor": "middle" });
+    dayLabel.textContent = p.label;
+    svg.appendChild(dayLabel);
   });
-  svg += "</svg>";
-  box.innerHTML = svg;
+
+  box.replaceChildren(svg);
 }
 
 function showRecords(rows) {
   const body = $("records-body");
   if (!rows || !rows.length) {
-    body.innerHTML = '<tr><td colspan="5" class="empty">No records</td></tr>';
+    const tr = makeEl("tr");
+    const td = makeEl("td", "empty", "No records");
+    td.colSpan = 5;
+    tr.appendChild(td);
+    body.replaceChildren(tr);
     return;
   }
-  body.innerHTML = rows.map((r) => `
-    <tr>
-      <td>${esc(r.datetime)}</td>
-      <td>${esc(r.indicator)}</td>
-      <td>${esc(r.value)}</td>
-      <td><span class="source-tag"><i class="dot ${r.source}"></i> ${r.source === "manual" ? "Manual" : "Sensor"}</span></td>
-      <td>${esc(r.notes)}</td>
-    </tr>`).join("");
+
+  body.replaceChildren(); // clear the table
+
+  rows.forEach((r) => {
+    const tr = makeEl("tr");
+    tr.appendChild(makeEl("td", "", r.datetime));
+    tr.appendChild(makeEl("td", "", r.indicator));
+    tr.appendChild(makeEl("td", "", r.value));
+
+    // Source tag: colored dot + "Manual" or "Sensor"
+    const sourceTd = makeEl("td");
+    const tag = makeEl("span", "source-tag");
+    tag.appendChild(makeEl("i", "dot " + safeClass(r.source, ALLOWED_SOURCES)));
+    tag.append(" " + (r.source === "manual" ? "Manual" : "Sensor"));
+    sourceTd.appendChild(tag);
+    tr.appendChild(sourceTd);
+
+    tr.appendChild(makeEl("td", "", r.notes || ""));
+    body.appendChild(tr);
+  });
 }
 
 function showHistory() {
@@ -191,7 +277,7 @@ function showHistory() {
 async function loadHistory() {
   if (selectedId == null) return;
   const current = ++requestId;
-  $("chart").innerHTML = '<p class="empty">Loading...</p>';
+  showEmpty($("chart"), "Loading...");
   try {
     const data = await getMemberHistory(selectedId, days);
     if (current !== requestId) return;
