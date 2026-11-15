@@ -5,7 +5,8 @@ from typing import Literal
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -39,6 +40,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+bearer = HTTPBearer(auto_error=False)
 MODEL_PACKAGE = joblib.load(BACKEND / "ml" / "isolation_forest_model.pkl")
 
 
@@ -77,12 +79,12 @@ class AnalysisResult(BaseModel):
     history_days: int
 
 
-def get_token(authorization):
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(
-            401, "Send the header  Authorization: Bearer <access_token>"
-        )
-    return authorization.split(" ", 1)[1].strip()
+# def get_token(authorization):
+#     if not authorization or not authorization.lower().startswith("bearer "):
+#         raise HTTPException(
+#             401, "Send the header  Authorization: Bearer <access_token>"
+#         )
+#     return authorization.split(" ", 1)[1].strip()
 
 
 def get_user_id(token):
@@ -171,8 +173,12 @@ def health():
 
 
 @app.post("/analysis", response_model=AnalysisResult)
-def analysis(reading: Reading, authorization: str | None = Header(None)):
-    token = get_token(authorization)
+def analysis(
+    reading: Reading, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
+):
+    if credentials is None:
+        raise HTTPException(401, "Click Authorize in /docs and paste your access_token")
+    token = credentials.credentials
     astronaut_id = reading.astronaut_id or get_user_id(token)
     day = reading.day or datetime.now(timezone.utc).date()
 
