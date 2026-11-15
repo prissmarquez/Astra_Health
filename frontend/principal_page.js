@@ -174,6 +174,8 @@ function renderIndicatorsChart() {
 
 // ---------- Start ----------
 
+connectLogoutButton();  // from supabase_client.js
+
 (async function () {
   const profile = await getProfile();
   if (!profile) {

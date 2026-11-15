@@ -36,15 +36,72 @@ function simulateField(field) {
   return measured[field];
 }
 
-// Fills `measured` for one button and returns the text to show, e.g. "68 bpm"
-function simulateSensor(sensor) {
+// Text for one button from `measured`, e.g. "68 bpm" or "115/75 mmHg".
+// Returns null if that sensor has not been measured yet.
+function formatSensor(sensor) {
   if (sensor === "blood_pressure") {
-    const systolic = simulateField("systolic_pressure");
-    const diastolic = simulateField("diastolic_pressure");
+    const systolic = measured.systolic_pressure;
+    const diastolic = measured.diastolic_pressure;
+    if (typeof systolic !== "number" || typeof diastolic !== "number") return null;
     return systolic + "/" + diastolic + " mmHg";
   }
-  const value = simulateField(sensor);
-  return value + " " + SIMULATED_RANGES[sensor].unit;
+  if (typeof measured[sensor] !== "number" || !SIMULATED_RANGES[sensor]) return null;
+  return measured[sensor] + " " + SIMULATED_RANGES[sensor].unit;
+}
+
+// Fills `measured` for one button and returns the text to show
+function simulateSensor(sensor) {
+  if (sensor === "blood_pressure") {
+    simulateField("systolic_pressure");
+    simulateField("diastolic_pressure");
+  } else {
+    simulateField(sensor);
+  }
+  return formatSensor(sensor);
+}
+
+// ===== Keep measured values across page changes (e.g. going to panas.html) =====
+const MEASURED_KEY = "astra_measured";
+
+function saveMeasured() {
+  try {
+    sessionStorage.setItem(MEASURED_KEY, JSON.stringify(measured));
+  } catch (error) {
+    // Storage blocked: values only live on this page
+  }
+}
+
+function clearMeasured() {
+  try {
+    sessionStorage.removeItem(MEASURED_KEY);
+  } catch (error) {
+    // Nothing to clear
+  }
+}
+
+// Loads saved values into `measured` (only known fields with valid numbers)
+function loadMeasured() {
+  let saved = null;
+  try {
+    saved = JSON.parse(sessionStorage.getItem(MEASURED_KEY));
+  } catch (error) {
+    return;
+  }
+  if (!saved || typeof saved !== "object") return;
+
+  REQUIRED_MEASUREMENTS.forEach(function (field) {
+    if (typeof saved[field] === "number" && Number.isFinite(saved[field])) {
+      measured[field] = saved[field];
+    }
+  });
+}
+
+function showMeasuredStatus(button, text) {
+  const status = button.parentElement.querySelector(".measure-status");
+  button.disabled = false;
+  button.textContent = "Measure again";
+  status.textContent = text + " ✓ (simulated)";
+  status.classList.add("done");
 }
 
 // ===== Measurement buttons =====
@@ -64,13 +121,19 @@ measureButtons.forEach(function (button) {
     // Wait 5 seconds (5000 ms)
     setTimeout(function () {
       const text = simulateSensor(button.dataset.sensor);
-
-      button.disabled = false;
-      button.textContent = "Measure again";
-      status.textContent = text + " ✓ (simulated)";
-      status.classList.add("done");
+      saveMeasured();
+      showMeasuredStatus(button, text);
     }, 5000);
   });
+});
+
+// Restore values measured before leaving the page
+loadMeasured();
+measureButtons.forEach(function (button) {
+  const text = formatSensor(button.dataset.sensor);
+  if (text) {
+    showMeasuredStatus(button, text);
+  }
 });
 
 // ===== PANAS card =====
@@ -106,6 +169,62 @@ function showPanasState() {
 }
 
 showPanasState();
+
+// ===== Keep exercise + sleep answers across page changes =====
+const FORM_KEY = "astra_checkin_form";
+const SLEEP_FIELDS = ["sleepHours", "sleepMinutes", "sleepNotes"];
+const exerciseRadios = document.querySelectorAll('input[name="exercise"]');
+
+function saveForm() {
+  const exercise = document.querySelector('input[name="exercise"]:checked');
+  const form = { exercise: exercise ? exercise.value : null };
+  SLEEP_FIELDS.forEach(function (id) {
+    form[id] = document.getElementById(id).value;
+  });
+  try {
+    sessionStorage.setItem(FORM_KEY, JSON.stringify(form));
+  } catch (error) {
+    // Storage blocked: answers only live on this page
+  }
+}
+
+function clearForm() {
+  try {
+    sessionStorage.removeItem(FORM_KEY);
+  } catch (error) {
+    // Nothing to clear
+  }
+}
+
+// Fills the inputs with the saved answers (values only, never HTML)
+function restoreForm() {
+  let form = null;
+  try {
+    form = JSON.parse(sessionStorage.getItem(FORM_KEY));
+  } catch (error) {
+    return;
+  }
+  if (!form || typeof form !== "object") return;
+
+  if (form.exercise === "yes" || form.exercise === "no") {
+    exerciseRadios.forEach(function (radio) {
+      radio.checked = radio.value === form.exercise;
+    });
+  }
+  SLEEP_FIELDS.forEach(function (id) {
+    if (typeof form[id] === "string") {
+      document.getElementById(id).value = form[id];
+    }
+  });
+}
+
+restoreForm();
+exerciseRadios.forEach(function (radio) {
+  radio.addEventListener("change", saveForm);
+});
+SLEEP_FIELDS.forEach(function (id) {
+  document.getElementById(id).addEventListener("input", saveForm);
+});
 
 // ===== Sleep: convert hours + minutes to sleep_min =====
 // Returns null if both fields are empty.
@@ -401,6 +520,8 @@ finishBtn.addEventListener("click", async function () {
 
   // 1) Save first, so nothing is lost if the network fails
   addToQueue(reading);
+  clearMeasured(); // the reading is safe in the queue: next check-in starts fresh
+  clearForm();
 
   // 2) Preliminary traffic light computed on the device
   showTrafficLight("Preliminary result", clinicalPreview(reading),
@@ -439,6 +560,8 @@ finishBtn.addEventListener("click", async function () {
     finishBtn.disabled = false;
   }
 });
+
+connectLogoutButton();  // from supabase_client.js
 
 // ===== On page load =====
 // Only signed-in users can check in; then retry any pending readings.
