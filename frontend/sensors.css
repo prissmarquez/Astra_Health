@@ -41,15 +41,17 @@
 /* ===== Sensor cards ===== */
 .sensors-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 14px;
 }
 
 .sensor-card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 14px;
-  padding: 18px;
+  padding: 24px 18px;
+  text-align: center;
   background: rgba(20, 40, 90, 0.5);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -61,16 +63,9 @@
   font-weight: normal;
 }
 
-.sensor-body {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
 .sensor-icon {
   width: 80px;
   height: 80px;
-  flex-shrink: 0;
   display: grid;
   place-items: center;
   font-size: 38px;
@@ -82,39 +77,14 @@
 .icon-blue   { color: #4cc9ff; }
 .icon-purple { color: #8a7dff; }
 
-.sensor-value {
-  margin: 0 0 8px;
-  font-size: 40px;
-  color: #fff;
-}
-
-.sensor-value span {
-  font-size: 20px;
-}
-
-.sensor-data {
-  margin: 2px 0;
-  font-size: 13px;
-  opacity: 0.85;
-}
-
-/* Status colors */
-.sensor-status {
-  color: var(--red);
-}
-
-.sensor-status.connected {
-  color: var(--green);
-}
-
-/* Connected card gets a brighter border */
+/* Connected card gets a green border */
 .sensor-card.connected {
   border-color: var(--green);
 }
 
 /* ===== Connect button ===== */
 .sensor-btn {
-  align-self: flex-start;
+  margin-top: auto;   /* keeps all buttons aligned at the bottom */
   padding: 8px 20px;
   font-size: 14px;
   color: var(--text);
@@ -126,6 +96,11 @@
 
 .sensor-btn:hover {
   background: rgba(122, 162, 255, 0.3);
+}
+
+.sensor-card.connected .sensor-btn {
+  color: var(--green);
+  border-color: var(--green);
 }
 
 .sensor-btn:disabled {
@@ -173,9 +148,5 @@
     width: 60px;
     height: 60px;
     font-size: 28px;
-  }
-
-  .sensor-value {
-    font-size: 32px;
   }
 }
