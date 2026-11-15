@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sensors - Astra Health</title>
+  <!-- Same styles as the dashboard (header, cards, nav) -->
+  <link rel="stylesheet" href="styles.css">
+  <!-- Styles only for this page -->
+  <link rel="stylesheet" href="sensors.css">
+</head>
+<body>
+  <div class="sensors-page">
+
+    <!-- HEADER (same as dashboard) -->
+    <header class="card header">
+      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+
+      <div class="usuario">
+        <strong id="nombre-usuario">Username</strong>
+        <small id="rol-usuario">Role</small>
+      </div>
+
+      <div class="bloque alerta">
+        <small> Next check-in in:</small>
+        <strong id="cuenta" class="reloj">--:--:--</strong>
+        <div class="barra rojo"><div id="barra-cuenta"></div></div>
+      </div>
+
+      <div class="conectado"><span class="punto"></span> Connected</div>
+    </header>
+
+    <!-- SENSORS -->
+    <main class="card sensors">
+      <div class="sensors-title">
+        <span class="sensors-title-icon">📡</span>
+        <div>
+          <h3>Health Sensors</h3>
+          <small>Connect your monitoring devices</small>
+        </div>
+      </div>
+
+      <div class="sensors-grid">
+
+        <!-- Heart rate -->
+        <div class="sensor-card">
+          <span class="sensor-icon icon-red">❤</span>
+          <h4>Heart Rate (HR)</h4>
+          <button class="sensor-btn" data-sensor="heart rate">Connect</button>
+        </div>
+
+        <!-- HRV -->
+        <div class="sensor-card">
+          <span class="sensor-icon icon-blue">📈</span>
+          <h4>HRV <span class="soft">(Heart Rate Variability)</span></h4>
+          <button class="sensor-btn" data-sensor="HRV">Connect</button>
+        </div>
+
+        <!-- SpO2 -->
+        <div class="sensor-card">
+          <span class="sensor-icon icon-blue">💧</span>
+          <h4>SpO₂ <span class="soft">(Pulse oximetry)</span></h4>
+          <button class="sensor-btn" data-sensor="SpO2">Connect</button>
+        </div>
+
+        <!-- Temperature -->
+        <div class="sensor-card">
+          <span class="sensor-icon icon-purple">🌡</span>
+          <h4>Body Temperature</h4>
+          <button class="sensor-btn" data-sensor="temperature">Connect</button>
+        </div>
+
+        <!-- Blood pressure -->
+        <div class="sensor-card">
+          <span class="sensor-icon icon-red">🩺</span>
+          <h4>Blood Pressure (BP)</h4>
+          <button class="sensor-btn" data-sensor="blood pressure">Connect</button>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- NAVIGATION -->
+    <nav class="card nav">
+      <a href="principal_page.html">Home</a>
+      <a href="historical.html">Historical</a>
+      <a href="checkin.html">Check-in</a>
+      <a>Body</a>
+      <a>settings</a>
+    </nav>
+
+  </div>
+
+  <script src="sensors.js"></script>
+</body>
+</html>
