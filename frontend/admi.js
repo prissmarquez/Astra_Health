@@ -84,6 +84,7 @@ function setFormMsg(text, type) {
 async function loadCrewOptions() {
   const { data, error } = await supabaseClient.from("crews").select("id, name").order("id");
   if (error) return console.error("crews:", error.message);
+  crewSelect.length = 1;  // keep only "No crew" so reloading never duplicates options
   for (const crew of data) {
     const option = document.createElement("option");
     option.value = crew.id;
@@ -162,6 +163,72 @@ userForm.addEventListener("submit", async (event) => {
   } catch (error) {
     // Network error (server off / offline) or the server's message, shown as text
     setFormMsg(error instanceof TypeError ? "Could not reach the server. Is uvicorn running?" : error.message, "error");
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+// ================= CREATE CREW =================
+// Calls POST /admin/crews on our FastAPI server with the admin's own token.
+// The server and the database (RLS) both check that the user is an admin.
+
+// Every crew ID starts with ASTRA- (migration 015), like profile IDs start with ASP-/LDR-/ADM-
+const CREW_PREFIX = "ASTRA-";
+const CREW_ID_PATTERN = /^ASTRA-[A-Z0-9]{1,14}$/;
+const crewForm = document.getElementById("create-crew-form");
+const crewIdInput = document.getElementById("cc-id");
+
+// Keep the ASTRA- prefix: whatever is typed after it stays, the prefix comes back if deleted
+function keepCrewPrefix() {
+  const value = crewIdInput.value.toUpperCase();
+  const rest = value.startsWith(CREW_PREFIX) ? value.slice(CREW_PREFIX.length) : value.replace(/^A?S?T?R?A?-?/, "");
+  crewIdInput.value = CREW_PREFIX + rest.replace(/[^A-Z0-9]/g, "");
+}
+crewIdInput.addEventListener("input", keepCrewPrefix);
+
+function setCrewMsg(text, type) {
+  const msg = document.getElementById("cc-msg");
+  msg.textContent = text;
+  msg.className = "form-msg" + (type ? " " + type : "");
+}
+
+crewForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const body = {
+    id: document.getElementById("cc-id").value.trim().toUpperCase(),
+    name: document.getElementById("cc-name").value.trim(),
+  };
+
+  if (!CREW_ID_PATTERN.test(body.id)) {
+    return setCrewMsg("The crew ID looks like ASTRA-B (ASTRA- + 1 to 14 capitals or digits).", "error");
+  }
+  if (!body.name) return setCrewMsg("Enter a crew name.", "error");
+
+  const submit = document.getElementById("cc-submit");
+  submit.disabled = true;
+  setCrewMsg("Creating...");
+  try {
+    const token = await getAccessToken();
+    if (!token) throw new Error("Your session expired. Log in again.");
+
+    const response = await fetch(`${API_URL}/admin/crews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(await readError(response));
+
+    const created = await response.json();
+    setCrewMsg(`Created ${created.id}. Now create its leader (LDR) in "Create profile".`, "ok");
+    crewForm.reset();  // the ID goes back to its default value, "ASTRA-"
+
+    // Ready for the next step: the new crew selected and the role set to leader
+    await loadCrewOptions();
+    roleSelect.value = "leader";
+    onRoleChange();
+    crewSelect.value = created.id;
+  } catch (error) {
+    setCrewMsg(error instanceof TypeError ? "Could not reach the server. Is uvicorn running?" : error.message, "error");
   } finally {
     submit.disabled = false;
   }

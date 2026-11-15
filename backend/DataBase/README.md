@@ -16,7 +16,10 @@ backend/DataBase/
 │   ├── 009_rename_indicators_to_ml.sql  indicator codes renamed to the ML names
 │   ├── 010_health_analyses.sql  stored ML results (traffic light, reasons) per analysis
 │   ├── 011_astronaut_codes.sql  login Id: ASP-xxxx (astronaut) / ADM-xxxx (ground admin)
-│   └── 012_leader_codes.sql     LDR-xxxx leaders; replace_crew_leader()
+│   ├── 012_leader_codes.sql     LDR-xxxx leaders; replace_crew_leader()
+│   ├── 013_health_analyses_backend_only.sql   only the backend writes ML analyses
+│   ├── 014_admin_crew_views.sql crew_overview and unassigned_astronauts (admin panel)
+│   └── 015_crew_id_prefix.sql   crew ids always start with ASTRA-
 ├── connection.py                Supabase client (publishable key + user token)
 ├── measurements.py              functions for Backend 2
 ├── check_connection.py          connection and security check
@@ -122,6 +125,49 @@ update public.profiles set role = 'admin' where id = '<user id from Authenticati
 - A mission can be assigned to a crew (`missions.crew_id`): all its members become participants automatically, and so does anyone who joins that crew before the mission ends. Past participations are kept.
 - **Realtime** is enabled on `measurements`: the front-end can subscribe to new readings and Supabase only delivers the rows each user is allowed to see.
 
+## Admin panel
+
+Admins can create as many crews as needed and manage them. Everything below works with the admin's own session (publishable key); the database rejects it for anyone who is not an admin.
+
+| Task | How |
+|---|---|
+| Is the signed-in user an admin? | `profiles.select('role, astronaut_code').eq('id', user.id)` → `role === 'admin'` |
+| Create a crew | API: `POST /admin/crews` with `{ "id": "ASTRA-B", "name": "Astra B" }` (see below), or directly `crews.insert({ id, name })` — id: `ASTRA-` + 1 to 14 capitals or digits (e.g. `ASTRA-B`) |
+| List crews with leader, members and free slots | view `crew_overview` |
+| People who can be added (ASP / LDR without a crew) | view `unassigned_astronauts` |
+| Add someone to a crew (LDR first, then up to 3 ASP) | `rpc('set_user_crew', { target_user, target_crew })` |
+| Remove someone from a crew | `rpc('set_user_crew', { target_user, target_crew: null })` |
+| Change the leader | `rpc('replace_crew_leader', { target_crew, new_leader })` |
+| Create a mission for a crew | `missions.insert({ name, mission_type, launch_at, crew_id })` |
+
+**`crew_overview`** (one row per crew): `crew_id`, `name`, `leader` (code), `leader_id`, `members` (codes of the ASP members), `total`, `free_slots` (out of 4), `created_at`.
+
+**`unassigned_astronauts`**: `astronaut_id`, `astronaut_code`, `name`, `role`, `created_at`.
+
+Both views respect RLS: the admin sees every crew and every unassigned astronaut; a crew member sees only their own crew (and only themselves if unassigned).
+
+**`POST /admin/crews`** (FastAPI, `backend/main.py`), same pattern as `POST /admin/users`:
+
+```js
+const response = await fetch(`${API_URL}/admin/crews`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+  body: JSON.stringify({ id: "ASTRA-B", name: "Astra Crew B" }),
+});
+```
+
+| Status | Meaning |
+|---|---|
+| `201` | Created: returns `{ "id", "name" }` (the id is upper-cased and trimmed; it must look like `ASTRA-B`) |
+| `401` | No token |
+| `403` | The user is not an admin |
+| `409` | That crew id already exists |
+| `422` | Invalid id or empty name |
+
+It uses the admin's own token (no secret key), so the database checks the role again. A new crew starts empty: add its `LDR` first, then up to 3 `ASP`.
+
+Errors to show as they come: *"Crew is full (4 members)"*, *"has no leader yet: its LDR must join first"*, *"already has a leader: use replace_crew_leader()"*, *"must have exactly one leader"*.
+
 ## Login with codes
 
 Every account has a short Id shown in the app (`profiles.astronaut_code`):
@@ -169,7 +215,7 @@ ASP-1001  ->  asp-1001@crew.astra-health.test
 
 ### Back-end 1
 
-1. Apply `001` to `012`, in order, once (SQL Editor or the Supabase connector).
+1. Apply `001` to `015`, in order, once (SQL Editor or the Supabase connector).
 2. **Authentication → Users → Add user**: create a test user (tick *Auto Confirm User*).
 3. Copy `.env.example` to `.env` in this folder and fill it in.
 4. Install and check:
@@ -194,6 +240,9 @@ The front-end sends `Authorization: Bearer <access_token>` on every request. The
 | `list_daily_readings(token, astronaut_id=, crew_id=, mission_type=, phase=, since=, until=)` | One row per day (`daily_readings`). |
 | `set_user_crew(token, user_id, crew_id)` | Admin only: moves an astronaut to a crew. |
 | `replace_crew_leader(token, crew_id, new_leader_id)` | Admin only: swaps the crew's LDR for another LDR account. |
+| `create_crew(token, crew_id, name)` | Admin only: creates a crew. |
+| `list_crews(token)` | Crews with leader, members and free slots (`crew_overview`). Admin: all; crew: their own. |
+| `list_unassigned(token)` | ASP / LDR accounts without a crew (`unassigned_astronauts`). Admin: all. |
 | `crew_latest(token, indicator=)` | Any crew member: latest value of that indicator for each crewmate, plus their latest adaptation. |
 | `new_measurement(...)` | Builds a dict with a new UUID. |
 

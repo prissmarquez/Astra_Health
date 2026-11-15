@@ -109,6 +109,24 @@
       </form>
     </section>
 
+    <!-- CREATE CREW (POST /admin/crews on our FastAPI server) -->
+    <section class="card">
+      <h3>Create crew</h3>
+      <p class="hint">A new crew starts empty: create its leader (LDR) first, then up to 3 crew members (ASP).</p>
+
+      <form id="create-crew-form" class="create-user-form" autocomplete="off">
+        <label for="cc-id">Crew ID</label>
+        <input id="cc-id" class="field" type="text" maxlength="20" placeholder="ASTRA-B" value="ASTRA-"
+               pattern="ASTRA-[A-Za-z0-9]{1,14}" required>
+
+        <label for="cc-name">Crew name</label>
+        <input id="cc-name" class="field" type="text" maxlength="120" placeholder="Astra Crew B" required>
+
+        <p class="form-msg" id="cc-msg" role="status"></p>
+        <button type="submit" class="btn-principal create-user-btn" id="cc-submit">Create crew</button>
+      </form>
+    </section>
+
     <!-- NAVIGATION -->
     <nav class="card nav">
       <a class="activo" href="admi.html">Home</a>

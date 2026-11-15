@@ -19,7 +19,7 @@ sys.path.insert(0, str(BACKEND / "IA"))
 
 from connection import admin_client, public_client, service_client, user_client  # noqa: E402
 from health_engine import IND, WINDOW, analyze  # noqa: E402
-from measurements import list_daily_readings, save_measurements  # noqa: E402
+from measurements import create_crew, list_daily_readings, save_measurements  # noqa: E402
 from body_systems import SYSTEMS, focus, focused, system_metric, system_status, updated_ago  # noqa: E402
 from explainer import explain  # noqa: E402
 from validation import error_message, out_of_range  # noqa: E402
@@ -158,6 +158,29 @@ class CreatedUser(BaseModel):
     astronaut_code: str
     role: str
     crew_id: str | None = None
+
+
+class NewCrew(BaseModel):
+    """POST /admin/crews: a new crew created by a ground admin."""
+
+    # ASTRA- + 1 to 14 capitals or digits (migration 015)
+    id: str = Field(..., pattern=r"^ASTRA-[A-Z0-9]{1,14}$", examples=["ASTRA-B"])
+    name: str = Field(..., min_length=1, max_length=120, examples=["Astra Crew B"])
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def normalize_id(cls, value):
+        return value.strip().upper() if isinstance(value, str) else value
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class CreatedCrew(BaseModel):
+    id: str
+    name: str
 
 
 # ---------- Helpers ------------------------------------------------------------
@@ -430,14 +453,14 @@ LOGIN_EMAIL_DOMAIN = "crew.astra-health.test"
 CREW_MAX_MEMBERS = 4  # migration 007
 
 
-def require_admin(token):
+def require_admin(token, action="create accounts"):
     """403 unless the token belongs to an admin (profiles.role, same as is_admin() in RLS)."""
     user_id = get_user_id(token)
     rows = (
         user_client(token).table("profiles").select("role").eq("id", user_id).execute().data
     )
     if not rows or rows[0]["role"] != "admin":
-        raise HTTPException(403, "Only a ground admin can create accounts")
+        raise HTTPException(403, f"Only a ground admin can {action}")
     return user_id
 
 
@@ -528,6 +551,32 @@ def create_account(
         raise HTTPException(400, f"Could not save the profile: {error_text(error)}") from error
 
     return CreatedUser(**profile)
+
+
+@app.post("/admin/crews", response_model=CreatedCrew, status_code=201)
+def create_crew_endpoint(
+    new: NewCrew, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
+):
+    """Creates a crew. Admins only.
+
+    Uses the admin's own token (no secret key): the RLS policy "crews: admin
+    creates" (migration 005) checks the role again in the database. The new
+    crew starts empty; its LDR must be added before any ASP (migration 012).
+    """
+    token = require_token(credentials)
+    require_admin(token, "create crews")
+    try:
+        row = create_crew(token, new.id, new.name)
+    except Exception as error:
+        text = error_text(error)
+        code = str(getattr(error, "code", "") or "")
+        if code == "23505" or "duplicate" in text.lower():
+            raise HTTPException(409, f"Crew {new.id} already exists") from error
+        if code == "42501" or "row-level security" in text.lower():
+            raise HTTPException(403, "Only a ground admin can create crews") from error
+        raise HTTPException(400, f"Could not create the crew: {text}") from error
+    return CreatedCrew(id=row["id"], name=row["name"])
+
 
 class BodyAnalysis(BaseModel):
     """GET /body/{system}: what frontend/script_BodyAi.js shows (same field names)."""
