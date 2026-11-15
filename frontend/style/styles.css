@@ -100,15 +100,6 @@ body {
   padding-left: 16px;
 }
 
-.alerta small {
-  color: var(--red);
-}
-
-.reloj {
-  font-size: 24px;
-  color: var(--red);
-}
-
 .conectado {
   margin-left: auto;
   font-size: 12px;
@@ -392,8 +383,35 @@ a.btn-borde {
   text-decoration: none;
 }
 
-.aviso {
-  font-size: 40px;
+.notificacion {
+  text-align: left;
+  border-color: var(--yellow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.avisos-nota {
+  opacity: 0.85;
+}
+
+.lista-avisos {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.lista-avisos .sin-avisos {
+  list-style: none;
+  margin-left: -18px;
+  font-weight: 400;
+}
+
+.notificacion .btn-borde {
+  align-self: center;
+  margin-top: auto;
 }
 
 /* ATENCIÓN */

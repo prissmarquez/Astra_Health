@@ -25,28 +25,30 @@ def test_flagged_indicators_from_reasons_and_deviations():
     assert flagged_indicators(pressure) == {"systolic_pressure", "diastolic_pressure", "hrv"}
 
 
-def test_status_depends_on_the_system():
-    assert system_status("cardio", FEVER) == "watch"        # heart rate is cardio
-    assert system_status("thermo", FEVER) == "watch"
-    assert system_status("resp", FEVER) == "stable"         # SpO2 was fine
-    assert system_status("cardio", RED) == "attention"
-    assert system_status("digest", RED) == "stable"
-    assert system_status("cardio", SCENARIOS["normal"]["analysis"]) == "stable"
+def test_status_depends_on_the_indicator():
+    assert system_status("heart_rate", FEVER) == "watch"
+    assert system_status("temperature", FEVER) == "watch"
+    assert system_status("spo2", FEVER) == "stable"         # SpO2 was fine
+    assert system_status("heart_rate", RED) == "attention"
+    assert system_status("glucose", RED) == "stable"
+    assert system_status("heart_rate", SCENARIOS["normal"]["analysis"]) == "stable"
+    pressure = {"traffic_light": "yellow", "clinical_reasons": ["high pressure"], "deviations": []}
+    assert system_status("pressure", pressure) == "watch"   # both readings belong to it
 
 
 def test_metric_uses_the_main_indicator_oldest_first():
     rows = [{"heart_rate": 72}, {"heart_rate": None}, {"heart_rate": 66}, {"heart_rate": 68}]  # newest first
-    metric = system_metric("cardio", rows)
+    metric = system_metric("heart_rate", rows)
     assert metric["value"] == 72
     assert metric["points"] == [68, 66, 72]
     assert metric["unit"] == "bpm"
     assert metric["trend"] == "+7% vs. average"             # 72 vs 67
 
 
-def test_metric_without_sensor_or_data():
-    assert system_metric("muscle", [{"heart_rate": 70}]) == {}
-    assert system_metric("resp", [{"spo2": None}]) == {}
-    assert system_metric("resp", [{"spo2": 98}])["trend"] == ""   # one day: no average yet
+def test_metric_without_data():
+    assert system_metric("spo2", [{"heart_rate": 70}]) == {}
+    assert system_metric("spo2", [{"spo2": None}]) == {}
+    assert system_metric("spo2", [{"spo2": 98}])["trend"] == ""   # one day: no average yet
 
 
 def test_updated_ago():
@@ -61,14 +63,14 @@ def test_updated_ago():
 VALUES = {"heart_rate": 104, "temperature": 38.3, "spo2": 97, "glucose": 85}
 
 
-def test_focused_keeps_only_this_system_when_not_red():
-    part, values = focused("resp", FEVER, VALUES)
+def test_focused_keeps_only_this_indicator_when_not_red():
+    part, values = focused("spo2", FEVER, VALUES)
     assert part["traffic_light"] == "green"
     assert part["clinical_reasons"] == [] and part["deviations"] == []
     assert part["connections"] == [] and part["detected_by_ml"] is False
     assert values == {"spo2": 97}
 
-    part, values = focused("cardio", FEVER, VALUES)
+    part, values = focused("heart_rate", FEVER, VALUES)
     assert part["traffic_light"] == "yellow"
     assert part["clinical_reasons"] == ["HR out of range"]
     assert part["deviations"] == ["HR ↑ (+2.6σ)"]
@@ -76,4 +78,4 @@ def test_focused_keeps_only_this_system_when_not_red():
 
 
 def test_focused_keeps_everything_when_red():
-    assert focused("digest", RED, VALUES) == (RED, VALUES)
+    assert focused("glucose", RED, VALUES) == (RED, VALUES)

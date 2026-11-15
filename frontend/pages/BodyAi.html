@@ -17,15 +17,11 @@
 
     <!-- HEADER -->
     <header class="card header">
-      <img src="../assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <span class="logo-nasa" aria-hidden="true"></span>  <!-- logo space, empty for now -->
       <img src="../assets/profile.png" alt="Profile picture" class="foto-perfil">
       <div class="usuario">
         <strong id="user-name">Username</strong>
         <small id="user-role">Role</small>
-      </div>
-      <div class="bloque alerta">
-        <small>Next check-in in:</small>
-        <strong id="cuenta" class="reloj">--:--:--</strong>
       </div>
       <div class="conectado"><span class="punto"></span> Checking...</div>
 
@@ -35,16 +31,18 @@
 
     <div class="body-layout">
 
-      <!-- LEFT: BODY SYSTEMS -->
+      <!-- LEFT: INDICATORS -->
       <aside class="card systems">
-        <h3>Body systems</h3>
+        <h3>Indicators</h3>
         <div class="systems-list" id="systems-list">
-          <button type="button" class="system-btn active" data-system="cardio"><span class="sys-ico">❤️</span><span>Cardiovascular system</span></button>
-          <button type="button" class="system-btn" data-system="resp"><span class="sys-ico">🫁</span><span>Respiratory system</span></button>
-          <button type="button" class="system-btn" data-system="digest"><span class="sys-ico">🍽️</span><span>Digestive system</span></button>
-          <button type="button" class="system-btn" data-system="nerv"><span class="sys-ico">🧠</span><span>Nervous system</span></button>
-          <button type="button" class="system-btn" data-system="immune"><span class="sys-ico">🛡️</span><span>Immune system</span></button>
-          <button type="button" class="system-btn" data-system="thermo"><span class="sys-ico">🌡️</span><span>Thermoregulation</span></button>
+          <button type="button" class="system-btn active" data-system="heart_rate"><span class="sys-ico">❤️</span><span>Heart rate</span></button>
+          <button type="button" class="system-btn" data-system="hrv"><span class="sys-ico">💓</span><span>Heart rate variability (HRV)</span></button>
+          <button type="button" class="system-btn" data-system="spo2"><span class="sys-ico">🫁</span><span>Blood oxygen (SpO₂)</span></button>
+          <button type="button" class="system-btn" data-system="pressure"><span class="sys-ico">🩺</span><span>Blood pressure</span></button>
+          <button type="button" class="system-btn" data-system="temperature"><span class="sys-ico">🌡️</span><span>Temperature</span></button>
+          <button type="button" class="system-btn" data-system="glucose"><span class="sys-ico">🩸</span><span>Glucose</span></button>
+          <button type="button" class="system-btn" data-system="sleep"><span class="sys-ico">😴</span><span>Sleep</span></button>
+          <button type="button" class="system-btn" data-system="mood"><span class="sys-ico">🙂</span><span>Mood</span></button>
         </div>
       </aside>
 
@@ -64,7 +62,7 @@
 
         <div class="card system-card" id="system-card">
           <div class="system-head">
-            <h3 id="system-title">Cardiovascular system</h3>
+            <h3 id="system-title">Heart rate</h3>
             <span class="status-pill" id="system-status">--</span>
           </div>
           <div class="system-body">

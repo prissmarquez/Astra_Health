@@ -1,9 +1,9 @@
 // ===== ASTRA HEALTH - Service worker =====
 // Keeps a copy of the front-end files so the app opens without internet.
 // Strategy: network-first (fresh file when online, cached copy when offline).
-// API calls (FastAPI /sync, /analysis) and Supabase are NEVER cached.
+// API calls (FastAPI /sync, /analysis, /body, ...) and Supabase are NEVER cached.
 
-const CACHE_NAME = "astra-cache-v5";  // change the version to drop old copies
+const CACHE_NAME = "astra-cache-v6";  // change the version to drop old copies
 
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
@@ -60,8 +60,9 @@ const APP_FILES = [
   SUPABASE_CDN
 ];
 
-// Paths of our FastAPI server: always go to the network
-const API_PATHS = ["/sync", "/analysis"];
+// Paths of our FastAPI server: always go to the network. In Railway the API
+// shares the origin with these pages, so every API route must be listed here.
+const API_PATHS = ["/sync", "/analysis", "/body", "/admin", "/health", "/docs", "/openapi.json"];
 
 // ----- Install: cache every file, skipping the ones that fail -----
 self.addEventListener("install", function (event) {

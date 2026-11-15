@@ -1,11 +1,11 @@
-"""Body systems of the Body AI screen (frontend/pages/BodyAi.html).
+"""Indicators of the AI Insights screen (frontend/pages/BodyAi.html).
 
-Maps each system to the indicators that describe it and builds the pieces of
-GET /body/{system}: the status pill, the metric with its 14-day line, and the
+Maps each entry of the screen's list to the indicators it covers and builds
+the pieces of GET /body/{system}: the status pill, the metric with its 14-day line, and the
 "Updated: x min ago" text. The AI text comes from explainer.py.
 
-Only measured indicators are used: a system with no sensor says so instead of
-inventing a value.
+Only measured indicators are used: an entry with no sensor says so instead of
+inventing a value. ("system" in names below = one entry of that list.)
 """
 
 from datetime import datetime, timezone
@@ -13,17 +13,18 @@ from datetime import datetime, timezone
 from templates import DEVIATION, ENGINE_NAMES
 from validation import VALID_RANGES
 
-# code used by the front-end -> name, indicators (ML names), main indicator for the metric
+# code used by the front-end -> name, indicators (ML names), main indicator for the metric.
+# One entry per indicator the crew measures; pressure and mood group their two readings.
 SYSTEMS = {
-    "cardio": {"name": "Cardiovascular system", "main": "heart_rate",
-               "indicators": ["heart_rate", "hrv", "systolic_pressure", "diastolic_pressure"]},
-    "resp": {"name": "Respiratory system", "main": "spo2", "indicators": ["spo2"]},
-    "digest": {"name": "Digestive system", "main": "glucose", "indicators": ["glucose"]},
-    "muscle": {"name": "Muscular system", "main": None, "indicators": []},
-    "nerv": {"name": "Nervous system", "main": "hrv",
-             "indicators": ["hrv", "sleep_min", "positive_mood", "negative_mood"]},
-    "immune": {"name": "Immune system", "main": "temperature", "indicators": ["temperature"]},
-    "thermo": {"name": "Thermoregulation", "main": "temperature", "indicators": ["temperature"]},
+    "heart_rate": {"name": "Heart rate", "main": "heart_rate", "indicators": ["heart_rate"]},
+    "hrv": {"name": "Heart rate variability (HRV)", "main": "hrv", "indicators": ["hrv"]},
+    "spo2": {"name": "Blood oxygen (SpO2)", "main": "spo2", "indicators": ["spo2"]},
+    "pressure": {"name": "Blood pressure", "main": "systolic_pressure",
+                 "indicators": ["systolic_pressure", "diastolic_pressure"]},
+    "temperature": {"name": "Temperature", "main": "temperature", "indicators": ["temperature"]},
+    "glucose": {"name": "Glucose", "main": "glucose", "indicators": ["glucose"]},
+    "sleep": {"name": "Sleep", "main": "sleep_min", "indicators": ["sleep_min"]},
+    "mood": {"name": "Mood", "main": "positive_mood", "indicators": ["positive_mood", "negative_mood"]},
 }
 
 # clinical reason written by health_engine.clinical() -> indicators it is about

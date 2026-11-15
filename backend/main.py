@@ -1,3 +1,4 @@
+import os
 import sys
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -9,6 +10,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import AwareDatetime, BaseModel, Field, field_validator
 
@@ -60,9 +62,15 @@ DEFAULT_MISSION_TYPES = {"short": (14, 7), "standard": (180, 14), "long": (365, 
 app = FastAPI(title="Astra Health API")
 
 # CORS: lets the HTML front-end call this server. Token goes in a header (no cookies).
+# ALLOWED_ORIGINS = comma-separated list (e.g. "https://app.example.com"); unset = "*"
+# for local development. In Railway the front-end is served by this same app, so
+# its calls are same-origin and do not depend on this list.
+ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()
+] or ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "OPTIONS"],  # GET: /health, /body
     allow_headers=["Authorization", "Content-Type"],
 )
@@ -617,7 +625,7 @@ def latest_analysis(token, astronaut_id):
 def body(
     system: str, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
 ):
-    """Body AI screen: the AI explains the latest analysis for one body system.
+    """AI Insights screen: the AI explains the latest analysis for one indicator.
     Uses what /sync already saved; one Claude call per request (~$0.0002)."""
     token = require_token(credentials)
     if system not in SYSTEMS:
@@ -674,3 +682,11 @@ def body(
         recommendations=text["recommendations"],
         source=text["source"],
     )
+
+
+# ---------- Front-end ----------------------------------------------------------
+# Mounted LAST so every API route above keeps priority. "/" serves
+# frontend/index.html (html=True), and pages/, style/, services/, assets/ and
+# sw.js are served as they are in the repo.
+FRONTEND = BACKEND.parent / "frontend"
+app.mount("/", StaticFiles(directory=FRONTEND, html=True), name="frontend")

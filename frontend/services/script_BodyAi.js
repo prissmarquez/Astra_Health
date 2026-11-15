@@ -20,15 +20,16 @@ async function getAnalysis(system) {
 }
 
 
-//  SYSTEMS 
+//  INDICATORS (same codes as SYSTEMS in backend/IA/body_systems.py)
 const SYSTEMS = {
-  cardio: "Cardiovascular system",
-  resp: "Respiratory system",
-  digest: "Digestive system",
-  muscle: "Muscular system",
-  nerv: "Nervous system",
-  immune: "Immune system",
-  thermo: "Thermoregulation",
+  heart_rate: "Heart rate",
+  hrv: "Heart rate variability (HRV)",
+  spo2: "Blood oxygen (SpO₂)",
+  pressure: "Blood pressure",
+  temperature: "Temperature",
+  glucose: "Glucose",
+  sleep: "Sleep",
+  mood: "Mood",
 };
 
 
@@ -36,7 +37,7 @@ function sampleAnalysis(system) {
   return {
     updatedAgo: "2 min ago",
     summary: `Example analysis for the ${SYSTEMS[system].toLowerCase()}.\nThe real text will come from the AI.`,
-    status: system === "cardio" ? "watch" : "stable",
+    status: system === "heart_rate" ? "watch" : "stable",
     metric: { label: "Latest reading", value: 72, unit: "bpm", trend: "+8% vs. average", points: [66, 68, 67, 70, 69, 72] },
     explanation: "Example explanation: a slight change was detected compared with your usual values.",
     recommendations: ["Do breathing exercises (3–5 min).", "Stay hydrated.", "Complete your next check-in."],
@@ -136,7 +137,7 @@ $("systems-list").addEventListener("click", (e) => {
 
 
 
-selectSystem("cardio");
+selectSystem("heart_rate");
 // Only crew members and leaders (auth_guard.js; no session -> index.html), then the header
 requireRole(["crew", "leader"]).then(fillUserHeader);
 connectLogoutButton();  // from supabase_client.js

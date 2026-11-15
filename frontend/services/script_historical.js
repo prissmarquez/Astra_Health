@@ -8,6 +8,11 @@ const INDICATORS = {
              extraColumn: "diastolic_pressure" },
   glucose: { label: "Glucose",                   unit: "mg/dL", column: "glucose",           range: { min: 55, max: 180 }, icon: "../assets/gluco.png" },
   temp:    { label: "Body temperature",          unit: "°C",    column: "temperature",       range: { min: 35, max: 38 },  icon: null },
+  hrv:     { label: "Heart rate variability",    unit: "ms",    column: "hrv",               range: null, icon: null },  // personal: no fixed range
+  sleep:   { label: "Sleep",                     unit: "min",   column: "sleep_min",         range: { min: 420, max: 540 }, icon: null },  // 7-9 h
+  mood_pos:{ label: "Positive mood",             unit: "/50",   column: "positive_mood",     range: null, icon: null },
+  mood_neg:{ label: "Negative mood",             unit: "/50",   column: "negative_mood",     range: null, icon: null },
+  radiation:{ label: "Radiation dose",           unit: "mGy",   column: "radiation_dose",    range: null, icon: null },
 };
 
 
@@ -25,6 +30,8 @@ function classifyValue(indicator, value, extra) {
     },
     glucose: () => (v < 54 || v > 250) ? "attention" : (v < 55 || v > 180) ? "follow" : "normal",
     temp:    () => v >= 39 ? "attention" : v >= 38 ? "follow" : "normal",
+    // same limits as backend/ml/health_engine.py (<5 h alert, 5-6 h advisory)
+    sleep:   () => v < 300 ? "attention" : v < 360 ? "follow" : "normal",
   };
   return rules[indicator] ? rules[indicator]() : "";
 }
@@ -51,7 +58,7 @@ function sinceDate(days) {
 async function fetchDaily(astronautId, days) {
   const { data, error } = await supabaseClient
     .from("daily_readings")
-    .select("day, heart_rate, spo2, systolic_pressure, diastolic_pressure, glucose, temperature, adaptation")
+    .select("day, heart_rate, hrv, spo2, systolic_pressure, diastolic_pressure, glucose, temperature, sleep_min, positive_mood, negative_mood, radiation_dose, adaptation")
     .eq("astronaut_id", astronautId)
     .gte("day", utcDay(sinceDate(days)))
     .order("day", { ascending: true });
@@ -538,6 +545,9 @@ connectLogoutButton();  // from supabase_client.js (no-op without #logout-btn)
   showMe();
 
   await loadTeam();  // needed first: the leader's ?id= must be one of these crewmates
-  const idFromUrl = new URLSearchParams(location.search).get("id");
+  const params = new URLSearchParams(location.search);
+  const indicatorFromUrl = params.get("indicator");  // from the Dashboard's "View details"
+  if (Object.hasOwn(INDICATORS, indicatorFromUrl || "")) $("indicator-filter").value = indicatorFromUrl;
+  const idFromUrl = params.get("id");
   viewMember(idFromUrl);
 })();

@@ -18,7 +18,7 @@
 
     <!-- HEADER -->
     <header class="card header">
-      <img src="../assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <span class="logo-nasa" aria-hidden="true"></span>  <!-- logo space, empty for now -->
       <img src="../assets/profile.png" alt="Profile picture" class="foto-perfil">
 
       <div class="usuario">
@@ -26,13 +26,6 @@
         <small id="rol-usuario">Role</small>
       </div>
 
-      <div class="bloque alerta">
-        <small>Next check-in in:</small>
-        <strong id="cuenta" class="reloj">--:--:--</strong>
-        <div class="barra rojo">
-          <div id="barra-cuenta"></div>
-        </div>
-      </div>
 
       <div class="conectado"><span class="punto"></span> Checking...</div>
 
@@ -79,12 +72,12 @@
       <small class="leyenda-g"><i class="dot-ok"></i> In range &nbsp; <i class="dot-warn"></i> Out of range</small>
     </section>
 
-    <!-- NOTIFICATION -->
+    <!-- WARNINGS: not critical, but worth watching (personal baseline + ML) -->
     <section class="card notificacion">
-      <h3>Check-in notification</h3>
-      <div class="aviso">⚠️</div>
-      <b>It's time to perform<br>a new health assessment.</b><br><br>
-      <button class="btn-borde">Go to log</button>
+      <h3>⚠️ Warnings</h3>
+      <small class="avisos-nota">Not critical, but they could affect you. Found by comparing with your usual values.</small>
+      <ul class="lista-avisos" id="lista-avisos"><li>Loading...</li></ul>
+      <button class="btn-borde" id="avisos-btn" type="button">View in History →</button>
     </section>
 
     <!-- INDICATORS NEEDING ATTENTION -->
@@ -96,7 +89,7 @@
           <strong id="atencion-titulo">No indicators needing attention</strong><br>
           <small id="atencion-detalle"></small>
         </div>
-        <button class="btn-borde claro">View details →</button>
+        <button class="btn-borde claro" id="atencion-btn" type="button">View details →</button>
       </div>
     </section>
 
