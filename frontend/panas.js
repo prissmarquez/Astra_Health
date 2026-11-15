@@ -1,8 +1,7 @@
 // ===== ASTRA HEALTH - PANAS page =====
 
 // ===== PANAS questionnaire =====
-// 20 feelings in the original PANAS order.
-// type "positive" = Positive Affect, "negative" = Negative Affect
+
 const panasItems = [
   { word: "Interested",   type: "positive" },
   { word: "Distressed",   type: "negative" },
