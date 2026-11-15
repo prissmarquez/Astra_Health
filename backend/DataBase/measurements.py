@@ -169,3 +169,21 @@ def set_user_crew(access_token: str, user_id: str, crew_id: str | None) -> None:
     user_client(access_token).rpc(
         "set_user_crew", {"target_user": user_id, "target_crew": crew_id}
     ).execute()
+
+
+def set_crew_leader(access_token: str, user_id: str) -> None:
+    """Admin only: makes user_id the leader of their crew.
+    The previous leader goes back to 'crew'. Every crew with members
+    always has exactly one leader."""
+    user_client(access_token).rpc("set_crew_leader", {"target_user": user_id}).execute()
+
+
+def crew_latest(access_token: str, indicator: str | None = None) -> list[dict]:
+    """For each crewmate of the signed-in user: the LATEST value of the
+    selected indicator (or of every indicator if None), taken while in this
+    crew, plus their latest adaptation score. Any crew member can call it.
+
+    The leader (and the admin) can also read the crew's full history with
+    list_measurements / list_daily_readings."""
+    params = {"p_indicator": indicator} if indicator else {}
+    return user_client(access_token).rpc("crew_latest", params).execute().data

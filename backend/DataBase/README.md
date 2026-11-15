@@ -9,7 +9,9 @@ backend/DataBase/
 │   ├── 002_rls_security.sql     permissions (RLS, admin)
 │   ├── 003_catalogs.sql         mission types, indicators, sensors
 │   ├── 004_lock_trigger_functions.sql   hides trigger functions from the API
-│   └── 005_crews.sql            crews: one crew per astronaut
+│   ├── 005_crews.sql            crews: one crew per astronaut
+│   ├── 006_leader_role.sql      adds the 'leader' role
+│   └── 007_crew_limits_and_leader.sql   4-member limit, leader rules, crew visibility, realtime
 ├── connection.py                Supabase client (publishable key + user token)
 ├── measurements.py              functions for Backend 2
 ├── check_connection.py          connection and security check
@@ -38,7 +40,7 @@ backend/DataBase/
 | Table | Contents |
 |---|---|
 | `auth.users` | Users and passwords. Managed by Supabase Auth; we don't touch it. |
-| `profiles` | One per user (created automatically on sign-up). `name` and `role` (`crew` or `admin`). |
+| `profiles` | One per user (created automatically on sign-up). `name`, `role` (`crew`, `leader` or `admin`) and `crew_id`. |
 | `crews` | One per crew. Its `id` is a short readable code such as `ASTRA-A`. |
 | `mission_types` | `short` (14 flight days), `standard` (180), `long` (365). Pre-flight: 10 days. Post-flight: 7 / 14 / 21 days. |
 | `missions` | Name, type, launch. **The planned return is computed automatically**; `actual_return_at` is filled in on return. |
@@ -83,14 +85,17 @@ backend/DataBase/
 
 ## Roles
 
-| | Crew | Admin (global) | Backend/ML process |
-|---|---|---|---|
-| See their own data | ✅ | ✅ | ✅ |
-| See other astronauts' data | ❌ | ✅ | ✅ |
-| Record measurements | own only | own only | ✅ |
-| Create missions / assign crew | ❌ | ✅ | ✅ |
-| Write adaptation | ❌ | ❌ | ✅ |
-| Edit or delete measurements | ❌ | ❌ | (admin tasks only) |
+| | Crew | Leader | Admin (ground) | Backend/ML process |
+|---|---|---|---|---|
+| See their own data (full history) | ✅ | ✅ | ✅ | ✅ |
+| See crewmates' names | ✅ | ✅ | ✅ | ✅ |
+| See crewmates' **latest** value of the selected indicator + latest adaptation (`crew_latest`) | ✅ | ✅ | ✅ | ✅ |
+| See the crew's **full history** (live with Realtime) and adaptation history | ❌ | ✅ | ✅ | ✅ |
+| See other crews | ❌ | ❌ | ✅ | ✅ |
+| Record measurements | own only | own only | own only | ✅ |
+| Create crews and missions, move people, choose leaders | ❌ | ❌ | ✅ | ✅ |
+| Write adaptation | ❌ | ❌ | ❌ | ✅ |
+| Edit or delete measurements | ❌ | ❌ | ❌ | (admin tasks only) |
 
 Nobody can make themselves admin from the app. To promote a user, Back-end 1 runs in the SQL Editor:
 
@@ -101,16 +106,19 @@ update public.profiles set role = 'admin' where id = '<user id from Authenticati
 ## Crews
 
 - Each astronaut belongs to **one crew at a time** (`profiles.crew_id`). The crew id is a short code such as `ASTRA-A`.
-- **Sign-up and joining a crew happen outside the database.** The external process sets `profiles.crew_id` with the secret key, or an admin calls `set_user_crew(user_id, crew_id)`. Astronauts cannot change their own crew.
-- Every measurement stores the crew the astronaut had **when it was taken** (`measurements.crew_id`), so history does not move if someone changes crew.
+- **At most 4 members per crew and 4 participants per mission.** The 5th is rejected.
+- **Every crew with members has exactly one leader.** The first person to join an empty crew becomes its leader. The admin transfers leadership with `set_crew_leader`. A leader cannot leave (or be removed) while other members remain: transfer leadership first. A mission can only be assigned to a crew that has a leader.
+- **Ground admins cannot join a crew.**
+- **Sign-up and joining a crew happen outside the database.** The external process sets `profiles.crew_id` with the secret key, or an admin calls `set_user_crew(user_id, crew_id)`. Astronauts cannot change their own crew or role.
+- Every measurement stores the crew the astronaut had **when it was taken** (`measurements.crew_id`), so history does not move if someone changes crew. The leader sees the measurements taken in their crew.
 - A mission can be assigned to a crew (`missions.crew_id`): all its members become participants automatically, and so does anyone who joins that crew before the mission ends. Past participations are kept.
-- Crew members see their own crew's name and code, but still not their crewmates' data. The admin sees every crew.
+- **Realtime** is enabled on `measurements`: the front-end can subscribe to new readings and Supabase only delivers the rows each user is allowed to see.
 
 ## Setup
 
 ### Back-end 1
 
-1. Apply `001` to `005`, in order, once (SQL Editor or the Supabase connector).
+1. Apply `001` to `007`, in order, once (SQL Editor or the Supabase connector).
 2. **Authentication → Users → Add user**: create a test user (tick *Auto Confirm User*).
 3. Copy `.env.example` to `.env` in this folder and fill it in.
 4. Install and check:
@@ -134,6 +142,8 @@ The front-end sends `Authorization: Bearer <access_token>` on every request. The
 | `list_measurements(token, indicator=, mission_type=, phase=, astronaut_id=, crew_id=, since=, until=)` | Full history (`readings_detailed`). |
 | `list_daily_readings(token, astronaut_id=, crew_id=, mission_type=, phase=, since=, until=)` | One row per day (`daily_readings`). |
 | `set_user_crew(token, user_id, crew_id)` | Admin only: moves an astronaut to a crew. |
+| `set_crew_leader(token, user_id)` | Admin only: makes someone the leader of their crew. |
+| `crew_latest(token, indicator=)` | Any crew member: latest value of that indicator for each crewmate, plus their latest adaptation. |
 | `new_measurement(...)` | Builds a dict with a new UUID. |
 
 Do not send `user_id` or `received_at`: the database sets them from the token. The mission, phase and mission day are filled in automatically.
@@ -147,6 +157,7 @@ The adaptation score is written with the **secret key** from a server-side proce
 - When calling the backend: `Authorization: Bearer ${session.access_token}`.
 - Filters: the front-end draws the controls (indicator, mission type, phase, dates) and sends the choices; the filtering itself happens in the database query. Small catalogs (indicators, mission types) can be filtered in the browser.
 - Clicking a day in `daily_readings` opens its full history from `readings_detailed`.
+- Clicking an indicator: crew members call `crew_latest(indicator)` to see each crewmate's latest value; leaders and admins can also open the crew's history from `readings_detailed`.
 - Each measurement is created on the device with `crypto.randomUUID()` as its `id` (see offline mode).
 
 ## Privacy: keeping everyone else out of the database
