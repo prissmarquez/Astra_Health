@@ -1,0 +1,128 @@
+/* ================= HISTORIAL ================= */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.page .header,
+.page .nav { grid-area: auto; }
+
+.history-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 14px;
+  align-items: start;
+}
+.history-main { display: grid; gap: 14px; align-content: start; min-width: 0; }
+
+.title { margin: 0; font-size: 22px; }
+.subtitle { margin: 4px 0 14px; opacity: .8; font-size: 13px; }
+
+.filters { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.filters label { display: inline-flex; align-items: center; gap: 8px; }
+
+/* SELECT DECORATIVO */
+.select-box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 38px 8px 14px;
+  background: rgba(20, 40, 90, 0.6);
+  border: 1px solid var(--blue);
+  border-radius: 14px;
+  box-shadow: 0 0 10px rgba(122, 162, 255, 0.35);
+}
+.select-box:focus-within { border-color: #fff; box-shadow: 0 0 14px rgba(122, 162, 255, 0.7); }
+.select-icon { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; pointer-events: none; }
+.select-box select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  min-width: 130px;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  color-scheme: dark;
+}
+.select-box select option { background: #071230; color: var(--text); }
+.select-box::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--blue);
+  border-bottom: 2px solid var(--blue);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+/* CHART */
+.chart-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.chart-head h3 { margin: 0; }
+.legend { display: flex; gap: 16px; font-size: 12px; opacity: .9; }
+.legend .line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--blue); vertical-align: middle; margin-right: 4px; }
+.legend .line.dashed { border-top-style: dashed; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart .axis { stroke: #2a4d99; stroke-width: 1; }
+.chart .label { fill: #9db4e8; font-size: 11px; }
+.chart .range-band { fill: rgba(122, 162, 255, .12); }
+.chart .series { fill: none; stroke: var(--blue); stroke-width: 2.5; }
+.chart .data-point { fill: var(--blue); stroke: #fff; stroke-width: 1.5; cursor: pointer; }
+
+/* TABLE */
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th { text-align: left; color: #9db4e8; font-weight: 600; padding: 8px; border-bottom: 1px solid var(--border); }
+.table td { padding: 8px; border-bottom: 1px solid rgba(42, 77, 153, .4); }
+.source-tag { display: inline-flex; align-items: center; gap: 6px; }
+
+/* DOTS */
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.dot.normal, .dot.sensor { background: var(--green); }
+.dot.follow { background: var(--yellow); }
+.dot.attention { background: var(--red); }
+.dot.manual { background: #8a7dff; }
+
+/* FOOTER ROW */
+.footer-row { display: flex; gap: 14px; align-items: center; }
+.source-card { flex: 1; font-size: 13px; }
+
+/* TEAM */
+.team-card { align-self: start; }
+.team-list { display: grid; gap: 10px; }
+.team-item {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(20, 40, 90, .5);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.team-item:hover { border-color: var(--blue); }
+.team-item.active { border-color: var(--blue); box-shadow: 0 0 8px rgba(122, 162, 255, .5); }
+.team-item .avatar { width: 44px; height: 44px; flex-shrink: 0; }
+.team-item .info { flex: 1; font-size: 13px; }
+.team-item .value { text-align: right; font-size: 20px; font-weight: bold; }
+.team-item .value small { display: block; font-size: 10px; font-weight: normal; opacity: .8; }
+.status-legend { list-style: none; padding: 12px 0 0; margin: 12px 0 0; border-top: 1px solid var(--border); display: grid; gap: 6px; font-size: 12px; }
+
+.empty { opacity: .6; font-size: 13px; text-align: center; }
+
+/* NAV */
+.page .nav a { color: var(--text); text-decoration: none; }
+.page .nav a.activo { color: var(--blue); }
+
+@media (max-width: 900px) {
+  .history-layout { grid-template-columns: minmax(0, 1fr); }
+  .footer-row { flex-direction: column; align-items: stretch; }
+}
