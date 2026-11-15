@@ -5,27 +5,99 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Astra Health - Body AI</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- Session guard: redirect to the login if there is no session -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_client.js"></script>
-  <script src="auth_guard.js"></script>
+  <link rel="stylesheet" href="BodyAi_style.css">
 </head>
 <body>
-  <div style="max-width:1200px;margin:0 auto;padding:20px;">
-    <section class="card">
-      <h3>Body AI</h3>
-      <p>Aquí va el contenido de Body AI.</p>
-      <a href="principal_page.html" class="btn-borde claro">← Back</a>
-    </section>
+  <div class="body-page">
+
+    <!-- HEADER -->
+    <header class="card header">
+      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+      <div class="usuario">
+        <strong id="user-name">Username</strong>
+        <small id="user-role">Role</small>
+      </div>
+      <div class="bloque alerta">
+        <small>Next check-in in:</small>
+        <strong id="cuenta" class="reloj">--:--:--</strong>
+      </div>
+      <div class="conectado"><span class="punto"></span> Connected</div>
+    </header>
+
+    <div class="body-layout">
+
+      <!-- LEFT: BODY SYSTEMS -->
+      <aside class="card systems">
+        <h3>Body systems</h3>
+        <div class="systems-list" id="systems-list">
+          <button type="button" class="system-btn active" data-system="cardio"><span class="sys-ico">❤️</span><span>Cardiovascular system</span></button>
+          <button type="button" class="system-btn" data-system="resp"><span class="sys-ico">🫁</span><span>Respiratory system</span></button>
+          <button type="button" class="system-btn" data-system="digest"><span class="sys-ico">🍽️</span><span>Digestive system</span></button>
+          <button type="button" class="system-btn" data-system="muscle"><span class="sys-ico">💪</span><span>Muscular system</span></button>
+          <button type="button" class="system-btn" data-system="nerv"><span class="sys-ico">🧠</span><span>Nervous system</span></button>
+          <button type="button" class="system-btn" data-system="immune"><span class="sys-ico">🛡️</span><span>Immune system</span></button>
+          <button type="button" class="system-btn" data-system="thermo"><span class="sys-ico">🌡️</span><span>Thermoregulation</span></button>
+        </div>
+        <a href="principal_page.html" class="back-btn">← Back to Dashboard</a>
+      </aside>
+
+      <!-- CENTER: AI-GENERATED IMAGE -->
+      <section class="card body-figure" id="body-figure">
+        <h3>🖼️ AI image</h3>
+
+        <div class="image-box" id="image-box">
+          <p class="empty" id="image-placeholder">No image yet. Describe what you want to see.</p>
+        </div>
+
+        <form id="image-form" class="image-form" autocomplete="off">
+          <input id="image-prompt" class="field" type="text" maxlength="300"
+                 placeholder="e.g. Human heart, anatomical view">
+          <button type="submit" class="btn-principal" id="image-btn">Generate</button>
+        </form>
+        <p class="form-msg" id="image-msg" role="status"></p>
+      </section>
+
+      <!-- RIGHT: AI ANALYSIS -->
+      <section class="analysis">
+
+        <div class="card ai-box">
+          <div class="ai-head">
+            <h3>✨ AI analysis</h3>
+            <span class="updated" id="ai-updated">--</span>
+          </div>
+          <div class="ai-body">
+            <div class="ai-avatar">🤖</div>
+            <p class="ai-text" id="ai-summary">Select a body system to see the analysis.</p>
+          </div>
+        </div>
+
+        <div class="card system-card" id="system-card">
+          <div class="system-head">
+            <h3 id="system-title">Cardiovascular system</h3>
+            <span class="status-pill" id="system-status">--</span>
+          </div>
+          <div class="system-body">
+            <div class="metric">
+              <div class="metric-value"><span id="metric-value">--</span> <small id="metric-unit"></small></div>
+              <div class="metric-trend" id="metric-trend"></div>
+              <div class="metric-label" id="metric-label"></div>
+            </div>
+            <div class="spark" id="spark"></div>
+            <p class="explanation" id="system-explanation"></p>
+          </div>
+        </div>
+
+        <div class="card reco-card">
+          <h3>💡 Recommendations</h3>
+          <ul class="reco-list" id="reco-list"></ul>
+        </div>
+
+      </section>
+    </div>
+
   </div>
-    <!-- NAVIGATION -->
-    <nav class="card nav">
-      <a  href="principal_page.html">Home</a>
-      <a href="historical.html">History</a>
-      <a href="checkin.html">Check-in</a>
-      <a class="activo" href="BodyAi.html">Body </a>
-      <a href="sensors.html">Sensors</a>
-      <a>Settings</a>
-    </nav>
+
+  <script src="script_BodyAi.js"></script>
 </body>
 </html>
