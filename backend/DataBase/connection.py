@@ -40,3 +40,14 @@ def user_client(access_token: str) -> Client:
     client = public_client()
     client.postgrest.auth(access_token)
     return client
+
+
+def service_client() -> Client:
+    """Client with the SECRET key: full access, bypasses RLS. SERVER ONLY.
+
+    Use it only to write records the user must not be able to forge, such as
+    the ML analysis result (health_analyses). Never expose the secret key to
+    the browser and always set the owner (astronaut_id) explicitly, since
+    there is no auth.uid() for this client.
+    """
+    return create_client(_env("SUPABASE_URL"), _env("SUPABASE_SECRET_KEY"))
