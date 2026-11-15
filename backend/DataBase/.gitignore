@@ -1,9 +1,9 @@
-# Llaves y contraseñas reales: NUNCA se suben a git.
+# Real keys and passwords: NEVER committed to git.
 .env
 .env.*
 !.env.example
 
-# Entorno virtual y archivos generados por Python
+# Virtual environment and Python-generated files
 .venv/
 __pycache__/
 *.pyc
