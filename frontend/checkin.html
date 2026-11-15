@@ -48,7 +48,7 @@
           <span class="measure-icon icon-red">❤</span>
           <div class="measure-info">
             <strong>Heart Rate (HR)</strong>
-            <button class="measure-btn" data-sensor="heart rate">Measure</button>
+            <button class="measure-btn" data-sensor="heart_rate">Measure</button>
             <small class="measure-status"></small>
           </div>
         </div>
@@ -58,7 +58,7 @@
           <span class="measure-icon icon-blue">📈</span>
           <div class="measure-info">
             <strong>HRV <span class="soft">(Heart Rate Variability)</span></strong>
-            <button class="measure-btn" data-sensor="HRV">Measure</button>
+            <button class="measure-btn" data-sensor="hrv">Measure</button>
             <small class="measure-status"></small>
           </div>
         </div>
@@ -70,10 +70,18 @@
           <label class="choice"><input type="radio" name="exercise" value="no"> No</label>
         </div>
 
-        <!-- Sleep -->
+        <!-- Sleep: hours + minutes (sent as sleep_min) and optional notes (sent as context) -->
         <div class="sleep-box">
-          <label for="sleep"><strong>Sleep duration and quality</strong> <span class="soft">(Text entry)</span></label>
-          <input type="text" id="sleep" placeholder="e.g., 7 hours, woke up twice">
+          <strong>Sleep duration and quality</strong>
+          <div class="sleep-time">
+            <label>
+              <input type="number" id="sleepHours" min="0" max="24" placeholder="0"> h
+            </label>
+            <label>
+              <input type="number" id="sleepMinutes" min="0" max="59" placeholder="0"> min
+            </label>
+          </div>
+          <input type="text" id="sleepNotes" placeholder="Notes (optional), e.g., woke up twice">
         </div>
 
         <!-- SpO2 -->
@@ -81,7 +89,7 @@
           <span class="measure-icon icon-blue">💧</span>
           <div class="measure-info">
             <strong>SpO₂ <span class="soft">(Pulse oximetry)</span></strong>
-            <button class="measure-btn" data-sensor="SpO2">Measure</button>
+            <button class="measure-btn" data-sensor="spo2">Measure</button>
             <small class="measure-status"></small>
           </div>
         </div>
@@ -101,7 +109,7 @@
           <span class="measure-icon icon-purple">🩺</span>
           <div class="measure-info">
             <strong>Blood Pressure (BP)</strong>
-            <button class="measure-btn" data-sensor="blood pressure">Measure</button>
+            <button class="measure-btn" data-sensor="blood_pressure">Measure</button>
             <small class="measure-status"></small>
           </div>
         </div>
