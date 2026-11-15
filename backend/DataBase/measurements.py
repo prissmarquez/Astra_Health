@@ -195,6 +195,32 @@ def create_crew(access_token: str, crew_id: str, name: str) -> dict:
     )
 
 
+def create_mission(access_token: str, code: str, name: str, mission_type: str,
+                   launch_at: datetime, crew_id: str | None = None) -> dict:
+    """Admin only: creates a mission. code is MSN- + 1 to 14 capitals or digits
+    (migration 016); mission_type is short, standard or long. The planned return
+    is computed by the database. With crew_id, every member of that crew joins
+    it automatically (the crew must have its leader; 4 people at most)."""
+    row = {"code": code, "name": name, "mission_type": mission_type,
+           "launch_at": launch_at.isoformat(), "crew_id": crew_id}
+    return (
+        user_client(access_token)
+        .table("missions")
+        .insert(row, default_to_null=False)
+        .execute()
+        .data[0]
+    )
+
+
+def move_to_mission(access_token: str, user_id: str, mission_code: str | None) -> None:
+    """Admin only: the person leaves every mission that has not finished and
+    joins mission_code (None = only leave). Finished missions stay in history.
+    The 4-participant limit still applies."""
+    user_client(access_token).rpc(
+        "move_to_mission", {"target_user": user_id, "target_mission": mission_code}
+    ).execute()
+
+
 def list_crews(access_token: str) -> list[dict]:
     """One row per crew: leader, members, total and free_slots (out of 4).
     The admin sees every crew; a crew member only sees their own."""
