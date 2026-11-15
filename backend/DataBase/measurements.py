@@ -173,11 +173,13 @@ def set_user_crew(access_token: str, user_id: str, crew_id: str | None) -> None:
     ).execute()
 
 
-def set_crew_leader(access_token: str, user_id: str) -> None:
-    """Admin only: makes user_id the leader of their crew.
-    The previous leader goes back to 'crew'. Every crew with members
-    always has exactly one leader."""
-    user_client(access_token).rpc("set_crew_leader", {"target_user": user_id}).execute()
+def replace_crew_leader(access_token: str, crew_id: str, new_leader_id: str) -> None:
+    """Admin only: the crew's current LDR leaves the crew and new_leader_id
+    (an LDR-xxxx account) joins it, in one step. Fails if new_leader_id is
+    not an LDR account or if a mission in flight is already full."""
+    user_client(access_token).rpc(
+        "replace_crew_leader", {"target_crew": crew_id, "new_leader": new_leader_id}
+    ).execute()
 
 
 def crew_latest(access_token: str, indicator: str | None = None) -> list[dict]:

@@ -14,7 +14,9 @@ backend/DataBase/
 │   ├── 007_crew_limits_and_leader.sql   4-member limit, leader rules, crew visibility, realtime
 │   ├── 008_exercising_flag.sql  exercising flag on measurements (used by the ML)
 │   ├── 009_rename_indicators_to_ml.sql  indicator codes renamed to the ML names
-│   └── 010_health_analyses.sql  stored ML results (traffic light, reasons) per analysis
+│   ├── 010_health_analyses.sql  stored ML results (traffic light, reasons) per analysis
+│   ├── 011_astronaut_codes.sql  login Id: ASP-xxxx (astronaut) / ADM-xxxx (ground admin)
+│   └── 012_leader_codes.sql     LDR-xxxx leaders; replace_crew_leader()
 ├── connection.py                Supabase client (publishable key + user token)
 ├── measurements.py              functions for Backend 2
 ├── check_connection.py          connection and security check
@@ -112,18 +114,62 @@ update public.profiles set role = 'admin' where id = '<user id from Authenticati
 
 - Each astronaut belongs to **one crew at a time** (`profiles.crew_id`). The crew id is a short code such as `ASTRA-A`.
 - **At most 4 members per crew and 4 participants per mission.** The 5th is rejected.
-- **Every crew with members has exactly one leader.** The first person to join an empty crew becomes its leader. The admin transfers leadership with `set_crew_leader`. A leader cannot leave (or be removed) while other members remain: transfer leadership first. A mission can only be assigned to a crew that has a leader.
+- **Every crew with members has exactly one leader: its `LDR-xxxx` account.** An empty crew accepts no `ASP` until its `LDR` joins, and a second `LDR` is rejected. The `LDR` cannot leave (or be removed) while `ASP` members remain. To change the leader, the admin calls `replace_crew_leader(crew_id, new_ldr)`: the old `LDR` leaves and the new one joins in one step. A mission can only be assigned to a crew that has a leader.
+- **Leaving a crew** also removes the person from that crew's missions that have **not launched yet**. Missions in flight or finished keep their participants (history), so a 5th person cannot be added mid-flight: replacing the leader of a full crew during a mission is rejected.
 - **Ground admins cannot join a crew.**
 - **Sign-up and joining a crew happen outside the database.** The external process sets `profiles.crew_id` with the secret key, or an admin calls `set_user_crew(user_id, crew_id)`. Astronauts cannot change their own crew or role.
 - Every measurement stores the crew the astronaut had **when it was taken** (`measurements.crew_id`), so history does not move if someone changes crew. The leader sees the measurements taken in their crew.
 - A mission can be assigned to a crew (`missions.crew_id`): all its members become participants automatically, and so does anyone who joins that crew before the mission ends. Past participations are kept.
 - **Realtime** is enabled on `measurements`: the front-end can subscribe to new readings and Supabase only delivers the rows each user is allowed to see.
 
+## Login with codes
+
+Every account has a short Id shown in the app (`profiles.astronaut_code`):
+
+| Code | Who |
+|---|---|
+| `ASP-xxxx` | Astronaut (crew, never leader) |
+| `LDR-xxxx` | Crew leader (always leader) |
+| `ADM-xxxx` | Ground admin (never in a crew) |
+
+Supabase Auth always needs an email, so each account uses a **technical email** built from its code. Nobody sees or types it:
+
+```
+ASP-1001  ->  asp-1001@crew.astra-health.test
+```
+
+- The database reads the code from that email when the account is created. Nobody can edit it afterwards.
+- **Login screen:** ask for the code and the password, then build the email:
+
+  ```js
+  const email = `${code.trim().toLowerCase()}@crew.astra-health.test`;
+  await supabase.auth.signInWithPassword({ email, password });
+  ```
+
+- **Creating accounts** (external registration process, with the secret key on a server):
+
+  ```js
+  await supabase.auth.admin.createUser({
+    email: 'asp-1001@crew.astra-health.test', password, email_confirm: true,
+    user_metadata: { name: 'Ana' },
+  });
+  // ADM accounts also need app_metadata (only the secret key can set it):
+  await supabase.auth.admin.createUser({
+    email: 'adm-0001@crew.astra-health.test', password, email_confirm: true,
+    app_metadata: { role: 'admin' },
+  });
+  ```
+
+  For test `ASP` and `LDR` accounts, the dashboard also works: *Authentication → Users → Add user*, technical email, password, tick *Auto Confirm User*. `ADM` accounts cannot be created from the dashboard (it cannot set `app_metadata`).
+- An `ADM` email without `app_metadata.role = 'admin'` is rejected: nobody becomes admin by choosing an email. The code defines the role: `ASP` is always crew, `LDR` always leader, `ADM` always admin; `ADM` accounts cannot join a crew.
+- Technical emails cannot receive mail: password resets are done by the admin, not by email.
+- Keep *Authentication → Sign In / Providers → Allow new users to sign up* **off**: accounts are created only by the registration process.
+
 ## Setup
 
 ### Back-end 1
 
-1. Apply `001` to `007`, in order, once (SQL Editor or the Supabase connector).
+1. Apply `001` to `012`, in order, once (SQL Editor or the Supabase connector).
 2. **Authentication → Users → Add user**: create a test user (tick *Auto Confirm User*).
 3. Copy `.env.example` to `.env` in this folder and fill it in.
 4. Install and check:
@@ -147,7 +193,7 @@ The front-end sends `Authorization: Bearer <access_token>` on every request. The
 | `list_measurements(token, indicator=, mission_type=, phase=, astronaut_id=, crew_id=, since=, until=)` | Full history (`readings_detailed`). |
 | `list_daily_readings(token, astronaut_id=, crew_id=, mission_type=, phase=, since=, until=)` | One row per day (`daily_readings`). |
 | `set_user_crew(token, user_id, crew_id)` | Admin only: moves an astronaut to a crew. |
-| `set_crew_leader(token, user_id)` | Admin only: makes someone the leader of their crew. |
+| `replace_crew_leader(token, crew_id, new_leader_id)` | Admin only: swaps the crew's LDR for another LDR account. |
 | `crew_latest(token, indicator=)` | Any crew member: latest value of that indicator for each crewmate, plus their latest adaptation. |
 | `new_measurement(...)` | Builds a dict with a new UUID. |
 
