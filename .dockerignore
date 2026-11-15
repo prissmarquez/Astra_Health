@@ -1,0 +1,5 @@
+.git
+**/.env
+**/__pycache__
+**/.DS_Store
+backend/ml/data/raw
