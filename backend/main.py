@@ -27,7 +27,7 @@ DB_TO_ML = {
     "mood_positive": "positive_mood",
     "mood_negative": "negative_mood",
 }
-ML_TO_DB = {ml: db for db, ml in DB_TO_ML.items()}
+# ML_TO_DB = {ml: db for db, ml in DB_TO_ML.items()}
 
 # Which sensor and entry method records each indicator
 # (sensor_indicators in DataBase/migrations/003_catalogs.sql)
@@ -269,7 +269,7 @@ def to_measurements(reading):
         rows.append(
             {
                 "id": str(uuid.uuid5(reading.id, c)),
-                "indicator": ML_TO_DB.get(c, c),
+                "indicator": c,
                 "sensor_id": sensor,
                 "value": getattr(reading, c),
                 "status": "taken",
@@ -285,19 +285,13 @@ def save_analysis(token, reading, result):
     """Stores the traffic light in health_analyses (migration 008). Insert-only."""
     row = {
         "id": str(reading.id),
-        "taken_at": reading.taken_at.isoformat(),
         "day": result.day.isoformat(),
         "traffic_light": result.traffic_light,
-        "mode": result.mode,
+        "mode": "personal" if result.mode == "personal" else "startup",
         "clinical_reasons": result.clinical_reasons,
         "deviations": result.deviations,
         "connections": result.connections,
         "detected_by_ml": result.detected_by_ml,
-        "phase": result.phase,
-        "mission_day": result.mission_day,
-        "adaptation": result.adaptation,
-        "history_days": result.history_days,
-        "exercising": reading.exercising,
         "model_version": MODEL_VERSION,
     }
     (
