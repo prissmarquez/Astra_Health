@@ -1,0 +1,72 @@
+.reg-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+.reg-page .header,
+.reg-page .nav { grid-area: auto; }
+.reg-page .nav a { color: var(--text); text-decoration: none; }
+.reg-page .nav a.activo { color: var(--blue); }
+
+/* Members + circles */
+.members-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.title { margin: 0; font-size: 24px; }
+.slots { display: flex; gap: 10px; }
+.slot {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: transparent; color: var(--text);
+  border: 2px solid var(--border);
+  font-size: 16px; font-weight: bold; cursor: pointer;
+}
+.slot:hover { border-color: var(--blue); }
+.slot.filled { background: rgba(46, 229, 157, 0.2); border-color: var(--green); }
+.slot.active { border-color: #fff; box-shadow: 0 0 10px rgba(122, 162, 255, .8); }
+
+/* Form */
+.member-form {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 360px);
+  gap: 14px 18px;
+  align-items: center;
+}
+.member-form label { font-size: 16px; }
+.member-form input,
+.member-form select {
+  background: rgba(20, 40, 90, 0.6);
+  color: var(--text);
+  border: 1px solid var(--blue);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color-scheme: dark;
+}
+.member-form input:focus,
+.member-form select:focus { outline: none; border-color: #fff; }
+.form-msg { grid-column: 1 / -1; margin: 0; min-height: 18px; font-size: 13px; }
+.form-msg.error { color: var(--red); }
+.form-msg.ok { color: var(--green); }
+.save-btn { grid-column: 1 / -1; justify-self: end; margin-top: 0; }
+
+/* Saved cards (the "Appears:" box) */
+.saved-list { display: grid; gap: 12px; }
+.member-card {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 16px;
+  background: rgba(20, 40, 90, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+}
+.member-card:hover { border-color: var(--blue); }
+.member-card.active { border-color: var(--blue); box-shadow: 0 0 8px rgba(122, 162, 255, .5); }
+.member-card .avatar { width: 56px; height: 56px; font-size: 20px; flex-shrink: 0; }
+.member-card .info { display: grid; gap: 2px; font-size: 14px; }
+.member-card .info small { opacity: .75; }
+.empty { opacity: .6; font-size: 13px; text-align: center; }
+
+@media (max-width: 600px) {
+  .member-form { grid-template-columns: 1fr; }
+}
