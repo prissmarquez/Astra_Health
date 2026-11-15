@@ -2,11 +2,11 @@ from pathlib import Path
 import pandas as pd
 
 MMASH = Path(__file__).parent / "raw" / "MMASH"
-usuario = next(MMASH.rglob("user_1"))
+user = next(MMASH.rglob("user_1"))
 
-for archivo in sorted(usuario.glob("*.csv")):
-    df = pd.read_csv(archivo)
+for file in sorted(user.glob("*.csv")):
+    df = pd.read_csv(file)
     print("=" * 80)
-    print(f" {archivo.name}  {df.shape}")
+    print(f" {file.name}  {df.shape}")
     print(list(df.columns))
     print(df.head(3))
