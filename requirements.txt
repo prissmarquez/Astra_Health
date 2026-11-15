@@ -1,0 +1,2 @@
+# Lets Railway detect a Python project at the repo root; the real list is in backend/.
+-r backend/requirements.txt

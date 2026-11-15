@@ -3,7 +3,10 @@
 // anything, RLS decides what each signed-in user sees. NEVER put the secret key here.
 const SUPABASE_URL = "https://oswgtubikjlzavaxliuv.supabase.co";   // same as SUPABASE_URL in .env
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_2bsjmdVdRpEanb76wEdzcg_cd5NHr1J";    // same as in .env
-const API_URL = "http://127.0.0.1:8000";                   // our FastAPI server
+// Our FastAPI server. With Live Server (port 5500) the API runs apart on :8000;
+// anywhere else (uvicorn locally, Railway) FastAPI serves these pages too, so
+// the API is on the same origin and "" makes calls like fetch("/sync").
+const API_URL = location.port === "5500" ? "http://127.0.0.1:8000" : "";
 
 // Page each role lands on after logging in.
 // Change admin's page when the admin view exists.

@@ -17,15 +17,11 @@
 
     <!-- HEADER -->
     <header class="card header">
-      <img src="../assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <span class="logo-nasa" aria-hidden="true"></span>  <!-- logo space, empty for now -->
       <img src="../assets/profile.png" alt="Profile picture" class="foto-perfil">
       <div class="usuario">
         <strong id="user-name">User name</strong>
         <small id="user-role">Role / Mission</small>
-      </div>
-      <div class="bloque alerta">
-        <small>Next check-in in:</small>
-        <strong id="countdown" class="reloj">--:--:--</strong>
       </div>
       <div class="conectado"><span class="punto"></span> Checking...</div>
     </header>
@@ -56,6 +52,11 @@
                   <option value="bp" data-unit="mmHg">Blood pressure</option>
                   <option value="glucose" data-unit="mg/dL">Glucose</option>
                   <option value="temp" data-unit="°C">Body temperature</option>
+                  <option value="hrv" data-unit="ms">Heart rate variability</option>
+                  <option value="sleep" data-unit="min">Sleep</option>
+                  <option value="mood_pos" data-unit="/50">Positive mood</option>
+                  <option value="mood_neg" data-unit="/50">Negative mood</option>
+                  <option value="radiation" data-unit="mGy">Radiation dose</option>
                 </select>
               </span>
             </div>

@@ -14,6 +14,46 @@ const CHART_INDICATORS = [
   { id: "ind-bp", label: "BP", max: 180, min_ok: 90, max_ok: 129 },
 ];
 
+// Names used by the health engine -> words for the crew + History indicator (if it has one)
+const ENGINE_NAMES = {
+  "HR": ["Heart rate", "hr"],
+  "HRV": ["Heart rate variability", "hrv"],
+  "sleep": ["Sleep", "sleep"],
+  "positive mood": ["Positive mood", "mood_pos"],
+  "negative mood": ["Negative mood", "mood_neg"],
+  "glucose": ["Glucose", "glucose"],
+  "systolic pressure": ["Systolic pressure", "bp"],
+  "diastolic pressure": ["Diastolic pressure", "bp"],
+  "temperature": ["Temperature", "temp"],
+  "SpO2": ["SpO₂", "spo2"],
+};
+
+// Critical clinical reason -> History indicator
+const REASON_INDICATOR = {
+  "low SpO2": "spo2",
+  "high temperature": "temp",
+  "very high temperature during exercise": "temp",
+  "HR out of range": "hr",
+  "high pressure": "bp",
+  "low pressure": "bp",
+  "glucose out of range": "glucose",
+  "severe habitual sleep deficit": "sleep",
+};
+
+const ADVISORY = "advisory: ";  // clinical reasons that are only a warning
+
+function historyUrl(indicator) {
+  return indicator ? `historical.html?indicator=${encodeURIComponent(indicator)}` : "historical.html";
+}
+
+// "HR ↑ (+2.6σ)" -> { text: "Heart rate higher than your usual", indicator: "hr" }
+function describeDeviation(d) {
+  const m = /^(.+) ([↑↓]) \(([+-]?\d+(?:\.\d+)?)σ\)$/.exec(d);
+  if (!m) return { text: d, indicator: null };
+  const [label, indicator] = ENGINE_NAMES[m[1]] || [m[1], null];
+  return { text: `${label} ${m[2] === "↑" ? "higher" : "lower"} than your usual`, indicator };
+}
+
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
@@ -66,6 +106,7 @@ async function fillHealthStatus(profile) {
     setText("salud-pct", "--");
     setText("salud-texto", "No check-in yet");
     ring.style.background = "conic-gradient(#1a2a50 100%, #1a2a50 0)";
+    showWarnings([]);
     return;
   }
 
@@ -75,17 +116,57 @@ async function fillHealthStatus(profile) {
   setText("salud-texto", light.text);
   ring.style.background = `conic-gradient(${light.color} 100%, #1a2a50 0)`;
 
-  // Indicators needing attention
-  const reasons = [...a.clinical_reasons, ...a.deviations.map((d) => `vs your normal: ${d}`)];
-  if (a.detected_by_ml) reasons.push("unusual pattern (ML)");
-  if (reasons.length === 0) {
+  const reasons = a.clinical_reasons || [];
+
+  // Indicators needing attention: critical clinical limits only
+  const critical = reasons.filter((r) => !r.startsWith(ADVISORY));
+  if (critical.length === 0) {
     setText("atencion-titulo", "No indicators needing attention");
     setText("atencion-detalle", `Last check-in: ${formatLocalDateTime(a.analyzed_at)}`);
   } else {
-    setText("atencion-titulo", reasons[0]);
-    setText("atencion-detalle", [...reasons.slice(1), ...a.connections].join(" · "));
+    setText("atencion-titulo", critical[0]);
+    setText("atencion-detalle", [...critical.slice(1), ...(a.connections || [])].join(" · "));
   }
+  attentionIndicator = REASON_INDICATOR[critical[0]] || null;
+
+  // Warnings: not critical (advisories, changes vs the usual, ML pattern)
+  const warnings = [
+    ...reasons.filter((r) => r.startsWith(ADVISORY))
+      .map((r) => ({ text: r.slice(ADVISORY.length), indicator: r.includes("sleep") ? "sleep" : null })),
+    ...(a.deviations || []).map(describeDeviation),
+  ];
+  if (a.detected_by_ml) {
+    warnings.push({ text: "Unusual pattern compared with your history (ML)", indicator: null });
+  }
+  showWarnings(warnings);
 }
+
+let attentionIndicator = null;  // History indicator for "View details"
+let warningIndicator = null;    // History indicator for "View in History"
+
+function showWarnings(warnings) {
+  const list = document.getElementById("lista-avisos");
+  list.replaceChildren();
+  if (warnings.length === 0) {
+    const li = document.createElement("li");
+    li.className = "sin-avisos";
+    li.textContent = "No warnings: your values look like your usual.";
+    list.append(li);
+  }
+  for (const w of warnings) {
+    const li = document.createElement("li");
+    li.textContent = w.text;
+    list.append(li);
+  }
+  warningIndicator = (warnings.find((w) => w.indicator) || {}).indicator || null;
+}
+
+document.getElementById("atencion-btn").addEventListener("click", () => {
+  location.href = historyUrl(attentionIndicator);
+});
+document.getElementById("avisos-btn").addEventListener("click", () => {
+  location.href = historyUrl(warningIndicator);
+});
 
 
 
