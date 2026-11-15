@@ -270,7 +270,7 @@ def to_measurements(reading):
         rows.append(
             {
                 "id": str(uuid.uuid5(reading.id, c)),  # model name: keeps resends idempotent
-                "indicator": ML_TO_DB.get(c, c),  # indicator code in the DB
+                "indicator": c,  # indicator code in the DB
                 "sensor_id": sensor,
                 "value": getattr(reading, c),
                 "status": "taken",
@@ -280,6 +280,7 @@ def to_measurements(reading):
                 "exercising": reading.exercising,  # what the astronaut chose
             }
         )
+
     return rows
 
 

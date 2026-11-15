@@ -1,16 +1,61 @@
 // ===== ASTRA HEALTH - Check-in page =====
+// Needs (loaded before this file): supabase-js@2 and supabase_client.js
+// (supabaseClient, API_URL, getProfile, getAccessToken).
 
-// ===== Measurement buttons (HR, HRV, SpO2, Temperature) =====
-// For now they only show a spinning circle for 5 seconds.
-// Later, replace the part marked "TODO" with the real function.
+const QUEUE_KEY = "astra_offline_queue";
 
+// ===== Simulated sensors =====
+// There is no real sensor yet, so each "Measure" generates a random value.
+// Assumed ranges, inside the green zone of backend/ml/health_engine.py.
+// Glucose: NASA Inspiration4 pre-flight values.
+const SIMULATED_RANGES = {
+  heart_rate:         { min: 55,   max: 80,   decimals: 0, unit: "bpm" },
+  hrv:                { min: 35,   max: 75,   decimals: 0, unit: "ms" },
+  spo2:               { min: 96,   max: 99,   decimals: 0, unit: "%" },
+  temperature:        { min: 36.5, max: 37.2, decimals: 1, unit: "°C" },
+  systolic_pressure:  { min: 105,  max: 125,  decimals: 0, unit: "mmHg" },
+  diastolic_pressure: { min: 65,   max: 80,   decimals: 0, unit: "mmHg" },
+  glucose:            { min: 71,   max: 90,   decimals: 0, unit: "mg/dL" }
+};
+
+// The 7 values the reading needs (same names as OfflineReading in backend/main.py)
+const REQUIRED_MEASUREMENTS = Object.keys(SIMULATED_RANGES);
+
+// Values measured on this page, e.g. { heart_rate: 68, spo2: 97, ... }
+const measured = {};
+
+function randomBetween(min, max, decimals) {
+  const factor = Math.pow(10, decimals);
+  const value = min + Math.random() * (max - min);
+  return Math.round(value * factor) / factor;
+}
+
+function simulateField(field) {
+  const range = SIMULATED_RANGES[field];
+  measured[field] = randomBetween(range.min, range.max, range.decimals);
+  return measured[field];
+}
+
+// Fills `measured` for one button and returns the text to show, e.g. "68 bpm"
+function simulateSensor(sensor) {
+  if (sensor === "blood_pressure") {
+    const systolic = simulateField("systolic_pressure");
+    const diastolic = simulateField("diastolic_pressure");
+    return systolic + "/" + diastolic + " mmHg";
+  }
+  const value = simulateField(sensor);
+  return value + " " + SIMULATED_RANGES[sensor].unit;
+}
+
+// ===== Measurement buttons =====
+// Show a spinning circle for 5 seconds, then a simulated value.
 const measureButtons = document.querySelectorAll(".measure-btn");
 
 measureButtons.forEach(function (button) {
   button.addEventListener("click", function () {
     const status = button.parentElement.querySelector(".measure-status");
 
-    // "Connecting..." text with a small spinning circle instead of a number
+    // "Connecting..." text with a small spinning circle (fixed HTML, no user data)
     button.disabled = true;
     button.innerHTML = 'Connecting... <span class="spinner"></span>';
     status.textContent = "Connecting to sensor";
@@ -18,12 +63,11 @@ measureButtons.forEach(function (button) {
 
     // Wait 5 seconds (5000 ms)
     setTimeout(function () {
-
-      // TODO: call the real measurement function here
+      const text = simulateSensor(button.dataset.sensor);
 
       button.disabled = false;
       button.textContent = "Measure again";
-      status.textContent = "Sensor connected ✓";
+      status.textContent = text + " ✓ (simulated)";
       status.classList.add("done");
     }, 5000);
   });
@@ -33,14 +77,35 @@ measureButtons.forEach(function (button) {
 // Shows if the questionnaire was already completed (saved by panas.js)
 const panasState = document.getElementById("panasState");
 const panasBtn = document.getElementById("panasBtn");
-const panasResult = JSON.parse(sessionStorage.getItem("panasResult"));
 
-if (panasResult) {
-  panasState.textContent = "Completed ✓  Positive: " + panasResult.positive +
-                           "/50 · Negative: " + panasResult.negative + "/50";
-  panasState.classList.add("done");
-  panasBtn.textContent = "Answer again →";
+// Returns { positive, negative } or null
+function getPanasResult() {
+  try {
+    const result = JSON.parse(sessionStorage.getItem("panasResult"));
+    if (result && typeof result.positive === "number" && typeof result.negative === "number") {
+      return result;
+    }
+  } catch (error) {
+    // Broken value: treat as not completed
+  }
+  return null;
 }
+
+function showPanasState() {
+  const panasResult = getPanasResult();
+  if (panasResult) {
+    panasState.textContent = "Completed ✓  Positive: " + panasResult.positive +
+                             "/50 · Negative: " + panasResult.negative + "/50";
+    panasState.classList.add("done");
+    panasBtn.textContent = "Answer again →";
+  } else {
+    panasState.textContent = "Not completed";
+    panasState.classList.remove("done");
+    panasBtn.textContent = "Start questionnaire →";
+  }
+}
+
+showPanasState();
 
 // ===== Sleep: convert hours + minutes to sleep_min =====
 // Returns null if both fields are empty.
@@ -55,60 +120,339 @@ function getSleepMinutes() {
   return Number(hours) * 60 + Number(minutes);
 }
 
-// ===== Data to send to the backend =====
-// Uses the same names as the database.
-// The sensor values are null for now; they will come from the real sensors.
-function getCheckinData() {
+// ===== UUID v4 =====
+// crypto.randomUUID only exists in secure contexts (https or localhost),
+// so build one with crypto.getRandomValues when it is missing.
+function newUuid() {
+  if (window.crypto && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+  const hex = Array.from(bytes, function (b) {
+    return b.toString(16).padStart(2, "0");
+  }).join("");
+  return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" +
+         hex.slice(16, 20) + "-" + hex.slice(20);
+}
+
+// ===== Validation =====
+// Returns an error text, or null if everything is ready.
+function validateCheckin() {
+  const missing = REQUIRED_MEASUREMENTS.filter(function (field) {
+    return typeof measured[field] !== "number";
+  });
+  if (missing.length > 0) {
+    return "Please take all measurements first (missing: " + missing.join(", ") + ").";
+  }
+
+  if (!document.querySelector('input[name="exercise"]:checked')) {
+    return "Please tell us if you exercised today.";
+  }
+
+  const hours = document.getElementById("sleepHours").value;
+  const minutes = document.getElementById("sleepMinutes").value;
+  const sleepMin = getSleepMinutes();
+
+  if (sleepMin === null) {
+    return "Please enter your sleep duration.";
+  }
+  if (minutes !== "" && (Number(minutes) < 0 || Number(minutes) > 59)) {
+    return "Sleep minutes must be between 0 and 59.";
+  }
+  if (Number.isNaN(sleepMin) || Number(hours) < 0 || sleepMin < 0 || sleepMin > 1440) {
+    return "Sleep time must be between 0 and 24 hours.";
+  }
+
+  if (!getPanasResult()) {
+    return "Please complete the mood questionnaire (PANAS) first.";
+  }
+
+  return null;
+}
+
+// ===== Reading sent to POST /sync =====
+// EXACTLY the field names of OfflineReading in backend/main.py.
+// sleepNotes is not sent: /sync has no field for it.
+function buildReading() {
   const exercise = document.querySelector('input[name="exercise"]:checked');
+  const panasResult = getPanasResult();
 
   return {
-    heart_rate: null,
-    hrv: null,              // confirm this name with backend
-    spo2: null,
-    temperature: null,
-    systolic_bp: null,      // blood pressure is sent as two values
-    diastolic_bp: null,
-    glucose: null,
+    id: newUuid(),
+    taken_at: new Date().toISOString(),
+    heart_rate: measured.heart_rate,
+    hrv: measured.hrv,
+    spo2: measured.spo2,
+    temperature: measured.temperature,
+    systolic_pressure: measured.systolic_pressure,
+    diastolic_pressure: measured.diastolic_pressure,
+    glucose: measured.glucose,
     sleep_min: getSleepMinutes(),
-    context: document.getElementById("sleepNotes").value.trim(),
-    exercise: exercise ? exercise.value : null,
-    panas_positive: panasResult ? panasResult.positive : null,
-    panas_negative: panasResult ? panasResult.negative : null
+    positive_mood: panasResult.positive,
+    negative_mood: panasResult.negative,
+    exercising: exercise.value === "yes",
+    is_simulated: true
   };
 }
 
-// ===== Finish button =====
-// For now it checks the form and shows the data in the console (F12).
+// ===== Offline queue (localStorage) =====
+function loadQueue() {
+  try {
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY));
+    return Array.isArray(queue) ? queue : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveQueue(queue) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+}
+
+function addToQueue(reading) {
+  const queue = loadQueue();
+  queue.push(reading);
+  saveQueue(queue);
+}
+
+// ===== Preliminary traffic light =====
+// Port of health_engine.clinical() with adaptation = 0 (no mission data here).
+// The server result replaces it once /sync answers.
+function clinicalPreview(r) {
+  let level = 0;
+  const reasons = [];
+  const adaptation = 0;
+  const expectedTemp = 37.0 + 1.0 * adaptation; // Stahn 2017
+  const expectedSys = 115 - 8 * adaptation;     // Norsk 2015
+
+  function flag(red, yellow, text) {
+    if (red) {
+      level = 2;
+      reasons.push(text);
+    } else if (yellow) {
+      level = Math.max(level, 1);
+      reasons.push(text);
+    }
+  }
+
+  // SpO2: BTS oxygen guideline
+  flag(r.spo2 < 92, r.spo2 < 95, "low SpO2");
+
+  if (r.exercising) {
+    // During exercise core temp >40 °C is common in space: alert only extreme values
+    flag(r.temperature > 40.5, false, "very high temperature during exercise");
+  } else {
+    flag(r.temperature >= expectedTemp + 2.0, r.temperature >= expectedTemp + 1.0,
+         "high temperature");
+    flag(r.heart_rate > 120 || r.heart_rate < 40, r.heart_rate > 100 || r.heart_rate < 50,
+         "HR out of range");
+  }
+
+  // High BP: red ACC/AHA 2017 stage 2, yellow ESC/ESH 2018 high-normal
+  flag(r.systolic_pressure >= 140 || r.diastolic_pressure >= 90,
+       r.systolic_pressure >= 130 || r.diastolic_pressure >= 85,
+       "high pressure");
+  // Low BP, relative to expected pressure
+  flag(r.systolic_pressure < expectedSys - 30, r.systolic_pressure < expectedSys - 25,
+       "low pressure");
+  // Glucose: hypoglycemia (Cryer 2009 / ADA level 2) and hyperglycemia
+  flag(r.glucose < 54 || r.glucose > 250, r.glucose < 55 || r.glucose > 180,
+       "glucose out of range");
+
+  // Sleep: the server uses the 7-night mean; here we only have one night,
+  // so it is an advisory and never changes the level.
+  if (r.sleep_min < 300) {
+    reasons.push("advisory: slept less than 5 h");
+  } else if (r.sleep_min < 360) {
+    reasons.push("advisory: slept less than 6 h");
+  }
+
+  return {
+    traffic_light: ["green", "yellow", "red"][level],
+    clinical_reasons: reasons,
+    deviations: [],
+    connections: [],
+    detected_by_ml: false
+  };
+}
+
+// ===== Finish message =====
+// Everything is written with textContent: server data never goes through innerHTML.
 const finishBtn = document.getElementById("finishBtn");
 const finishMessage = document.getElementById("finishMessage");
+
+const LIGHT_ICONS = { green: "🟢", yellow: "🟡", red: "🔴" };
 
 function showFinishError(text) {
   finishMessage.textContent = text;
   finishMessage.className = "finish-message error";
 }
 
-finishBtn.addEventListener("click", function () {
-  const minutes = document.getElementById("sleepMinutes").value;
-  const sleepMin = getSleepMinutes();
-
-  if (minutes !== "" && (Number(minutes) < 0 || Number(minutes) > 59)) {
-    showFinishError("Sleep minutes must be between 0 and 59.");
-    return;
-  }
-
-  if (sleepMin !== null && (sleepMin < 0 || sleepMin > 1440)) {
-    showFinishError("Sleep time must be between 0 and 24 hours.");
-    return;
-  }
-
-  if (!panasResult) {
-    showFinishError("Please complete the mood questionnaire (PANAS) first.");
-    return;
-  }
-
-  // TODO: send this object to the backend (PHP)
-  console.log(getCheckinData());
-
-  finishMessage.textContent = "Mission log completed.";
+function showFinishInfo(text) {
+  finishMessage.textContent = text;
   finishMessage.className = "finish-message";
+}
+
+function appendLine(text) {
+  if (finishMessage.childNodes.length > 0) {
+    finishMessage.appendChild(document.createElement("br"));
+  }
+  finishMessage.appendChild(document.createTextNode(text));
+}
+
+function listOrNone(items) {
+  return Array.isArray(items) && items.length > 0 ? items.join("; ") : "none";
+}
+
+// title: e.g. "Preliminary result" / "Result"; note: optional extra line
+function showTrafficLight(title, analysis, note) {
+  const light = String(analysis.traffic_light);
+  finishMessage.textContent = "";
+  finishMessage.className = light === "red" ? "finish-message error" : "finish-message";
+
+  appendLine((LIGHT_ICONS[light] || "⚪") + " " + title + ": " + light.toUpperCase());
+  appendLine("Clinical reasons: " + listOrNone(analysis.clinical_reasons));
+  appendLine("Deviations: " + listOrNone(analysis.deviations));
+  appendLine("Connections: " + listOrNone(analysis.connections));
+  appendLine("Detected by ML: " + (analysis.detected_by_ml ? "yes" : "no"));
+  if (note) {
+    appendLine(note);
+  }
+}
+
+// ===== Sync with the backend =====
+// Sends the whole queue to POST /sync and removes only the ids that came back ok.
+// Returns the server results, or throws if the request failed (queue untouched).
+let syncing = false;
+
+async function syncQueue() {
+  if (syncing) return null;
+  const queue = loadQueue();
+  if (queue.length === 0) return [];
+
+  syncing = true;
+  try {
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error("Session expired, please log in again.");
+    }
+
+    const response = await fetch(API_URL + "/sync", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify(queue)
+    });
+
+    if (!response.ok) {
+      throw new Error("Server error (" + response.status + ")");
+    }
+
+    const results = await response.json();
+    const okIds = new Set(
+      results.filter(function (item) { return item.ok; })
+             .map(function (item) { return String(item.id).toLowerCase(); })
+    );
+
+    // Reload the queue: a reading may have been added while waiting
+    const remaining = loadQueue().filter(function (reading) {
+      return !okIds.has(String(reading.id).toLowerCase());
+    });
+    saveQueue(remaining);
+    return results;
+  } finally {
+    syncing = false;
+  }
+}
+
+// Retry in the background (page load and "online" event)
+async function retrySync() {
+  if (loadQueue().length === 0) return;
+  try {
+    const results = await syncQueue();
+    if (!results) return;
+    const uploaded = results.filter(function (item) { return item.ok; }).length;
+    const pending = loadQueue().length;
+    if (uploaded > 0 && finishMessage.textContent === "") {
+      showFinishInfo("Uploaded " + uploaded + " pending reading(s)." +
+                     (pending > 0 ? " " + pending + " still pending." : ""));
+    }
+  } catch (error) {
+    // Still offline or server down: readings stay in the queue
+    console.warn("Sync retry failed:", error);
+  }
+}
+
+window.addEventListener("online", retrySync);
+
+// ===== Finish button =====
+finishBtn.addEventListener("click", async function () {
+  const error = validateCheckin();
+  if (error) {
+    showFinishError(error);
+    return;
+  }
+
+  const reading = buildReading();
+
+  // 1) Save first, so nothing is lost if the network fails
+  addToQueue(reading);
+
+  // 2) Preliminary traffic light computed on the device
+  showTrafficLight("Preliminary result", clinicalPreview(reading),
+                   "Saved on this device. Uploading...");
+
+  // PANAS is used: the next check-in needs a new one
+  sessionStorage.removeItem("panasResult");
+  showPanasState();
+
+  // 3) Upload the whole queue
+  finishBtn.disabled = true;
+  try {
+    const results = await syncQueue();
+    const mine = (results || []).find(function (item) {
+      return String(item.id).toLowerCase() === reading.id.toLowerCase();
+    });
+
+    if (mine && mine.ok && mine.analysis) {
+      const pending = loadQueue().length;
+      showTrafficLight("Result", mine.analysis,
+                       pending > 0 ? pending + " older reading(s) still pending." : "Mission log saved.");
+    } else if (mine && !mine.ok) {
+      showTrafficLight("Preliminary result", clinicalPreview(reading),
+                       "Not uploaded yet (" + (mine.error || "unknown error") +
+                       "). It will be retried automatically.");
+    } else {
+      // Another sync was already running; this reading goes in the next one
+      showTrafficLight("Preliminary result", clinicalPreview(reading),
+                       "Saved on this device. It will be uploaded automatically.");
+    }
+  } catch (syncError) {
+    showTrafficLight("Preliminary result", clinicalPreview(reading),
+                     "Offline: saved on this device, it will be uploaded when you are back online. (" +
+                     syncError.message + ")");
+  } finally {
+    finishBtn.disabled = false;
+  }
 });
+
+// ===== On page load =====
+// Only signed-in users can check in; then retry any pending readings.
+(async function init() {
+  const profile = await getProfile();
+  if (!profile) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  document.getElementById("nombre-usuario").textContent =
+    profile.name || profile.astronaut_code || "Astronaut";
+  document.getElementById("rol-usuario").textContent =
+    [profile.astronaut_code, profile.role].filter(Boolean).join(" · ");
+
+  retrySync();
+})();
