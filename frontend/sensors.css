@@ -78,6 +78,16 @@
 .icon-purple { color: #8a7dff; }
 
 /* Connected card gets a green border */
+/* "Reading sent" notice on the card (removed by sensors.js after ~3 s) */
+.sensor-toast {
+  font-weight: bold;
+  color: var(--green);
+}
+
+.sensor-toast.error {
+  color: var(--red);
+}
+
 .sensor-card.connected {
   border-color: var(--green);
 }

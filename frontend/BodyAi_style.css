@@ -6,7 +6,8 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
-.body-page .header { grid-area: auto; }
+.body-page .header,
+.body-page .nav { grid-area: auto; }  /* shared nav (nav.js) under the header */
 
 .body-layout {
   display: grid;

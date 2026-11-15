@@ -12,6 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase_client.js"></script>
   <script src="auth_guard.js"></script>
+  <script src="nav.js"></script>
 </head>
 <body>
   <div class="sensors-page">
@@ -33,6 +34,9 @@
       </div>
 
       <div class="conectado"><span class="punto"></span> Checking...</div>
+
+      <!-- LOG OUT -->
+      <button class="btn-borde btn-logout" id="logout-btn">Log out</button>
     </header>
 
     <!-- SENSORS -->
@@ -92,15 +96,6 @@
       </div>
     </main>
 
-    <!-- NAVIGATION -->
-    <nav class="card nav">
-      <a href="principal_page.html">Home</a>
-      <a href="historical.html">History</a>
-      <a href="checkin.html">Check-in</a>
-      <a href="BodyAi.html">Body</a>
-      <a href="sensors.html" class="activo">Sensors </a>
-      <a>Settings</a>
-    </nav>
 
   </div>
 

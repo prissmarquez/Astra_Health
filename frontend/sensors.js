@@ -161,36 +161,56 @@ function saveLastReading(message) {
   }
 }
 
+// "Reading sent ✓" / "Reading not sent" notice on the card, removed after ~3 s
+const TOAST_MS = 3000;
+
+function showToast(card, text, isError) {
+  let toast = card.querySelector(".sensor-toast");
+  if (!toast) {
+    toast = document.createElement("small");
+    toast.className = "sensor-toast";
+    toast.setAttribute("role", "status");  // read out by screen readers
+    card.appendChild(toast);
+  }
+  toast.textContent = text;
+  toast.classList.toggle("error", Boolean(isError));
+  clearTimeout(toast.hideTimer);
+  toast.hideTimer = setTimeout(function () { toast.remove(); }, TOAST_MS);
+}
+
 // Generates one reading and sends it once
 function sendReading(button) {
   const card = button.parentElement;
   const status = statusLine(card);
   const sensor = button.dataset.sensor;
 
-  if (!bleChannel) {
-    status.textContent = "This browser cannot emulate sensors (no BroadcastChannel).";
-    return;
+  try {
+    if (!bleChannel) throw new Error("This browser cannot emulate sensors (no BroadcastChannel).");
+
+    if (!states.has(button)) states.set(button, createState(sensor));
+    const packet = nextPacket(states.get(button));
+    const sentAt = new Date();
+
+    const message = {
+      sensor: sensor,
+      uuid: BleCodec.SENSORS[sensor].uuid,
+      bytes: Array.from(packet.bytes),
+      sent_at: sentAt.toISOString()
+    };
+
+    // Live delivery: reaches checkin.html if Measure is already waiting
+    bleChannel.postMessage(message);
+    // Last reading per sensor: lets Measure pick it up if it is pressed AFTER sending
+    saveLastReading(message);
+
+    card.classList.add("connected");
+    status.textContent = packet.text + " · sent " +
+      sentAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    showToast(card, "Reading sent ✓", false);
+  } catch (error) {
+    console.error("Reading not sent:", error);
+    showToast(card, "Reading not sent", true);
   }
-
-  if (!states.has(button)) states.set(button, createState(sensor));
-  const packet = nextPacket(states.get(button));
-  const sentAt = new Date();
-
-  const message = {
-    sensor: sensor,
-    uuid: BleCodec.SENSORS[sensor].uuid,
-    bytes: Array.from(packet.bytes),
-    sent_at: sentAt.toISOString()
-  };
-
-  // Live delivery: reaches checkin.html if Measure is already waiting
-  bleChannel.postMessage(message);
-  // Last reading per characteristic: lets Measure pick it up if it is pressed AFTER sending
-  saveLastReading(message);
-
-  card.classList.add("connected");
-  status.textContent = packet.text + " · sent " +
-    sentAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 document.querySelectorAll(".sensor-btn").forEach(function (button) {
@@ -205,6 +225,6 @@ window.addEventListener("pagehide", function () {
   if (bleChannel) bleChannel.close();
 });
 
-// Only crew members and leaders (auth_guard.js); also shows the page
-requireRole(["crew", "leader"]);
-connectLogoutButton();  // from supabase_client.js (no-op without #logout-btn)
+// Only crew members and leaders (auth_guard.js; no session -> index.html), then the header
+requireRole(["crew", "leader"]).then(fillUserHeader);
+connectLogoutButton();  // from supabase_client.js

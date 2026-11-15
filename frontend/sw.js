@@ -3,7 +3,7 @@
 // Strategy: network-first (fresh file when online, cached copy when offline).
 // API calls (FastAPI /sync, /analysis) and Supabase are NEVER cached.
 
-const CACHE_NAME = "astra-cache-v3";  // change the version to drop old copies
+const CACHE_NAME = "astra-cache-v4";  // change the version to drop old copies
 
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
@@ -36,6 +36,7 @@ const APP_FILES = [
   "auth_guard.js",
   "ble_codec.js",
   "checkin.js",
+  "nav.js",
   "panas.js",
   "principal_page.js",
   "script_BodyAi.js",
