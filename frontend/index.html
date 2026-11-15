@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log in - ASTRA HEALTH</title>
   <link rel="stylesheet" href="style_login.css">
 </head>
+
 <body>
 
- 
+
   <div class="user-status">
     <div class="user-status-avatar">&#128100;</div>
     <span id="userStatusText">Not authenticated</span>
@@ -40,7 +42,7 @@
 
         <form id="loginForm">
           <label for="astronautId">Astronaut ID</label>
-          <input type="text" id="astronautId" placeholder="Enter your ID (e.g., AST-1037)">
+          <input type="text" id="astronautId" placeholder="Enter your ID (e.g., ASP-1001)">
 
           <label for="password">Password</label>
           <div class="password-box">
@@ -57,15 +59,19 @@
 
         <!-- Help box -->
         <div id="helpBox" class="help-box hidden">
-          <p>Your ID uses the format <strong>AST-0000</strong>.</p>
+          <p>Your ID uses the format <strong>ASP-0000</strong> (astronaut), <strong>LDR-0000</strong> (leader) or
+            <strong>ADM-0000</strong> (ground).</p>
           <p>If you forgot your password, contact the ground medical team.</p>
-          <p>Demo: <strong>AST-1037</strong> / <strong>orbit2026</strong></p>
         </div>
       </div>
     </section>
 
   </main>
 
+  <!-- Order matters: Supabase library, then our client, then the login -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_client.js"></script>
   <script src="script_login.js"></script>
 </body>
+
 </html>

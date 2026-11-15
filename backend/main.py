@@ -27,7 +27,8 @@ DB_TO_ML = {
     "mood_positive": "positive_mood",
     "mood_negative": "negative_mood",
 }
-# ML_TO_DB = {ml: db for db, ml in DB_TO_ML.items()}
+# Model names -> indicator codes in the DB (used when saving measurements)
+ML_TO_DB = {ml: db for db, ml in DB_TO_ML.items()}
 
 # Which sensor and entry method records each indicator
 # (sensor_indicators in DataBase/migrations/003_catalogs.sql)
@@ -268,14 +269,15 @@ def to_measurements(reading):
             sensor, source = "orbit_health_simulator", "system"
         rows.append(
             {
-                "id": str(uuid.uuid5(reading.id, c)),
-                "indicator": c,
+                "id": str(uuid.uuid5(reading.id, c)),  # model name: keeps resends idempotent
+                "indicator": ML_TO_DB.get(c, c),  # indicator code in the DB
                 "sensor_id": sensor,
                 "value": getattr(reading, c),
                 "status": "taken",
                 "taken_at": reading.taken_at.isoformat(),
                 "source": source,
                 "is_simulated": reading.is_simulated,
+                "exercising": reading.exercising,  # what the astronaut chose
             }
         )
     return rows
