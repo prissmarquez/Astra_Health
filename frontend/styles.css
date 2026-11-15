@@ -17,7 +17,7 @@ body {
   min-height: 100vh;
   color: var(--text);
   font-family: system-ui, sans-serif;
-  background-image: url("imagenfondo.jpg");
+  background-image: url("assets/background.jpg");
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
