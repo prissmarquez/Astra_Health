@@ -1,7 +1,7 @@
 // ===== ASTRA HEALTH - Check-in page =====
 
 // ===== Measurement buttons (HR, HRV, SpO2, Temperature) =====
-// For now they only simulate a 5 second connection.
+// For now they only show a spinning circle for 5 seconds.
 // Later, replace the part marked "TODO" with the real function.
 
 const measureButtons = document.querySelectorAll(".measure-btn");
@@ -10,29 +10,23 @@ measureButtons.forEach(function (button) {
   button.addEventListener("click", function () {
     const sensor = button.dataset.sensor;
     const status = button.parentElement.querySelector(".measure-status");
-    let seconds = 5;
 
-    // Lock the button while "connecting"
+    // "Connecting..." text with a small spinning circle instead of a number
     button.disabled = true;
-    status.classList.remove("done");
-    button.textContent = "Connecting... " + seconds;
+    button.innerHTML = 'Connecting... <span class="spinner"></span>';
     status.textContent = "Connecting to " + sensor + " sensor";
+    status.classList.remove("done");
 
-    const timer = setInterval(function () {
-      seconds = seconds - 1;
-      button.textContent = "Connecting... " + seconds;
+    // Wait 5 seconds (5000 ms)
+    setTimeout(function () {
 
-      if (seconds === 0) {
-        clearInterval(timer);
+      // TODO: call the real measurement function here
 
-        // TODO: call the real measurement function here
-
-        button.disabled = false;
-        button.textContent = "Measure again";
-        status.textContent = "Sensor connected ✓";
-        status.classList.add("done");
-      }
-    }, 1000);
+      button.disabled = false;
+      button.textContent = "Measure again";
+      status.textContent = "Sensor connected ✓";
+      status.classList.add("done");
+    }, 5000);
   });
 });
 
