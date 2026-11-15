@@ -6,7 +6,7 @@
 const $ = (id) => document.getElementById(id);
 
 // ================= DATA SOURCE (TEAMMATE EDITS HERE) =================
-const API_URL = null;            // e.g. "http://localhost:3000/api/body"
+const BODY_API_URL = null;            // e.g. "http://localhost:3000/api/body"
 const USE_SAMPLE_DATA = true;    // false when the AI endpoint works
 
 /**
@@ -23,8 +23,8 @@ const USE_SAMPLE_DATA = true;    // false when the AI endpoint works
  * Every text is rendered with textContent, so the AI text is never run as HTML.
  */
 async function getAnalysis(system) {
-  if (USE_SAMPLE_DATA || !API_URL) return sampleAnalysis(system);
-  const res = await fetch(`${API_URL}/${encodeURIComponent(system)}`);
+  if (USE_SAMPLE_DATA || !BODY_API_URL) return sampleAnalysis(system);
+  const res = await fetch(`${BODY_API_URL}/${encodeURIComponent(system)}`);
   if (!res.ok) throw new Error("Status " + res.status);
   return res.json();
 }
@@ -34,11 +34,11 @@ async function getAnalysis(system) {
  * Keep the image API key on the BACKEND, never in this file.
  */
 async function generateImage(prompt) {
-  if (USE_SAMPLE_DATA || !API_URL) {
+  if (USE_SAMPLE_DATA || !BODY_API_URL) {
     await new Promise((r) => setTimeout(r, 800));       // simulates waiting
     return { url: "assets/body.png" };                   // example image
   }
-  const res = await fetch(`${API_URL}/image`, {
+  const res = await fetch(`${BODY_API_URL}/image`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),
@@ -205,3 +205,6 @@ $("image-form").addEventListener("submit", async (e) => {
 });
 
 selectSystem("cardio");
+// Only crew members and leaders (auth_guard.js); also shows the page
+requireRole(["crew", "leader"]);
+connectLogoutButton();  // from supabase_client.js (no-op without #logout-btn)

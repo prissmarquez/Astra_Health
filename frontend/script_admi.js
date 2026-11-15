@@ -327,11 +327,8 @@ $("period-chips").addEventListener("click", (e) => {
 
 // ================= START =================
 (async function init() {
-  const profile = await getProfile();
-  if (!profile || profile.role !== "admin") {
-    window.location.href = "index.html";  // only admins can be here
-    return;
-  }
+  const profile = await requireRole(["admin"]);  // auth_guard.js: others -> principal_page.html
+  if (!profile) return;
   try {
     crew = await getCrew();
   } catch (err) {
