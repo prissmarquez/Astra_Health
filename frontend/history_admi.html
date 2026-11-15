@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astra Health - Admin History</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="historial.css">
+  <link rel="stylesheet" href="admi.css">
+</head>
+<body>
+  <div class="page">
+
+    <!-- HEADER -->
+    <header class="card header">
+      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+      <div class="usuario">
+        <strong id="user-name">Admin name</strong>
+        <small id="user-role">Administrator</small>
+      </div>
+      <div class="conectado"><span class="punto"></span> Connected</div>
+    </header>
+
+    <div class="history-layout">
+
+      <!-- LEFT: HISTORY OF THE SELECTED CREW MEMBER -->
+      <main class="history-main">
+
+        <section class="card">
+          <h2 class="title" id="member-title">Loading...</h2>
+          <p class="subtitle">Full health history (read-only)</p>
+
+          <div class="chips" id="indicator-chips">
+            <button class="chip active" data-indicator="hr">Heart rate</button>
+            <button class="chip" data-indicator="spo2">SpO₂</button>
+            <button class="chip" data-indicator="bp">Blood pressure</button>
+            <button class="chip" data-indicator="glucose">Glucose</button>
+            <button class="chip" data-indicator="temp">Body temperature</button>
+          </div>
+          <div class="chips" id="period-chips">
+            <button class="chip active" data-days="7">Last 7 days</button>
+            <button class="chip" data-days="14">Last 14 days</button>
+            <button class="chip" data-days="30">Last 30 days</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="chart-head">
+            <h3 id="chart-title">Heart rate</h3>
+            <div class="legend">
+              <span><i class="line"></i> Record</span>
+              <span><i class="line dashed"></i> Recommended range</span>
+            </div>
+          </div>
+          <div id="chart" class="chart">
+            <p class="empty">Loading...</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Detailed log (all indicators)</h3>
+          <table class="table">
+            <thead>
+              <tr><th>Date &amp; time</th><th>Indicator</th><th>Value</th><th>Source</th><th>Notes</th></tr>
+            </thead>
+            <tbody id="records-body">
+              <tr><td colspan="5" class="empty">No records</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+
+      <!-- RIGHT: CREW LIST (switch person) -->
+      <aside class="card team-card">
+        <h3>Crew members</h3>
+        <div id="crew-list" class="team-list">
+          <p class="empty">Loading...</p>
+        </div>
+        <ul class="status-legend">
+          <li><i class="dot normal"></i> Normal</li>
+          <li><i class="dot follow"></i> Follow-up</li>
+          <li><i class="dot attention"></i> Needs attention</li>
+        </ul>
+      </aside>
+    </div>
+
+    <!-- NAVIGATION -->
+    <nav class="card nav">
+      <a href="admi.html">Home</a>
+      <a class="activo" href="history_admi.html">History</a>
+      <a>Settings</a>
+    </nav>
+
+  </div>
+
+  <script src="script_admi.js"></script>
+</body>
+</html>
