@@ -10,7 +10,6 @@
   <!-- Session guard: admin only; redirect to the login or the user's home -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase_client.js"></script>
-  <script>window.REQUIRE_ROLE = "admin";</script>
   <script src="auth_guard.js"></script>
 </head>
 
@@ -26,7 +25,7 @@
         <strong id="nombre-usuario">Admin name</strong>
         <small id="rol-usuario">Administrator</small>
       </div>
-      <div class="conectado"><span class="punto"></span> Connected</div>
+      <div class="conectado"><span class="punto"></span> Checking...</div>
 
       <!-- LOG OUT -->
       <button class="btn-borde btn-logout" id="logout-btn">Log out</button>
@@ -83,8 +82,6 @@
       <a>Settings</a>
     </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase_client.js"></script>
     <script src="admi.js"></script>
 
 

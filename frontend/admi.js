@@ -64,11 +64,8 @@ async function loadCrewGrid() {
 connectLogoutButton();  // from supabase_client.js
 
 (async function () {
-  const profile = await getProfile();
-  if (!profile || profile.role !== "admin") {
-    window.location.href = "index.html";  // only admins can be here
-    return;
-  }
+  const profile = await requireRole(["admin"]);  // auth_guard.js: others -> principal_page.html
+  if (!profile) return;
   document.getElementById("nombre-usuario").textContent = profile.name || profile.astronaut_code;
   document.getElementById("rol-usuario").textContent = `${profile.astronaut_code} · Administrator`;
   await loadCrewGrid();

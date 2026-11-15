@@ -26,7 +26,7 @@
         <small>Next check-in in:</small>
         <strong id="countdown" class="reloj">--:--:--</strong>
       </div>
-      <div class="conectado"><span class="punto"></span> Connected</div>
+      <div class="conectado"><span class="punto"></span> Checking...</div>
     </header>
 
     <div class="history-layout">
@@ -36,7 +36,13 @@
 
         <section class="card">
           <h2 class="title">Health history</h2>
-          <p class="subtitle">Explore your records and discover trends</p>
+          <p class="subtitle" id="history-subtitle">Explore your records and discover trends</p>
+
+          <!-- Leader only: whose data is on screen + way back to their own -->
+          <div class="filters" id="viewing-banner" style="display: none">
+            <span id="viewing-text"></span>
+            <button type="button" class="btn-borde claro" id="back-to-mine">Back to my data</button>
+          </div>
 
           <div class="filters">
             <div class="filter-group">
@@ -95,6 +101,19 @@
           </table>
         </section>
 
+        <!-- DAILY STATUS (health_analyses) + ADAPTATION (daily_adaptation) -->
+        <section class="card">
+          <h3>Daily status &amp; adaptation</h3>
+          <table class="table">
+            <thead>
+              <tr><th>Day</th><th>Status</th><th>Adaptation</th><th>Reasons</th></tr>
+            </thead>
+            <tbody id="status-body">
+              <tr><td colspan="4" class="empty">No records</td></tr>
+            </tbody>
+          </table>
+        </section>
+
         <div class="footer-row">
           <div class="card source-card">Data source: <span id="data-source">--</span></div>
           <button class="btn-borde claro" id="export-btn">Export history ⬇</button>
@@ -127,8 +146,6 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase_client.js"></script>
 <script src="script_historical.js"></script>
 </body>
 </html>

@@ -45,6 +45,7 @@ async function generateImage(prompt) {
     return { url: "assets/body.png" };                   // example image
   }
   const res = await fetch(`${BODY_API_URL}/image`, {
+  const res = await fetch(`${BODY_API_URL}/image`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),
@@ -211,3 +212,6 @@ $("image-form").addEventListener("submit", async (e) => {
 });
 
 selectSystem("cardio");
+// Only crew members and leaders (auth_guard.js); also shows the page
+requireRole(["crew", "leader"]);
+connectLogoutButton();  // from supabase_client.js (no-op without #logout-btn)

@@ -32,7 +32,7 @@
         <div class="barra rojo"><div id="barra-cuenta"></div></div>
       </div>
 
-      <div class="conectado"><span class="punto"></span> Connected</div>
+      <div class="conectado"><span class="punto"></span> Checking...</div>
     </header>
 
     <!-- SENSORS -->
@@ -51,42 +51,42 @@
         <div class="sensor-card">
           <span class="sensor-icon icon-red">❤</span>
           <h4>Heart Rate (HR)</h4>
-          <button class="sensor-btn" data-sensor="heart_rate">Connect</button>
+          <button class="sensor-btn" data-sensor="heart_rate">Send reading</button>
         </div>
 
         <!-- HRV -->
         <div class="sensor-card">
           <span class="sensor-icon icon-blue">📈</span>
           <h4>HRV <span class="soft">(Heart Rate Variability)</span></h4>
-          <button class="sensor-btn" data-sensor="hrv">Connect</button>
+          <button class="sensor-btn" data-sensor="hrv">Send reading</button>
         </div>
 
         <!-- SpO2 -->
         <div class="sensor-card">
           <span class="sensor-icon icon-blue">💧</span>
           <h4>SpO₂ <span class="soft">(Pulse oximetry)</span></h4>
-          <button class="sensor-btn" data-sensor="spo2">Connect</button>
+          <button class="sensor-btn" data-sensor="spo2">Send reading</button>
         </div>
 
         <!-- Temperature -->
         <div class="sensor-card">
           <span class="sensor-icon icon-purple">🌡</span>
           <h4>Body Temperature</h4>
-          <button class="sensor-btn" data-sensor="temperature">Connect</button>
+          <button class="sensor-btn" data-sensor="temperature">Send reading</button>
         </div>
 
         <!-- Blood pressure -->
         <div class="sensor-card">
           <span class="sensor-icon icon-purple">🩺</span>
           <h4>Blood Pressure (BP)</h4>
-          <button class="sensor-btn" data-sensor="blood_pressure">Connect</button>
+          <button class="sensor-btn" data-sensor="blood_pressure">Send reading</button>
         </div>
 
         <!-- Glucose -->
         <div class="sensor-card">
           <span class="sensor-icon icon-red">🩸</span>
           <h4>Blood Glucose <span class="soft">(Continuous monitor)</span></h4>
-          <button class="sensor-btn" data-sensor="glucose">Connect</button>
+          <button class="sensor-btn" data-sensor="glucose">Send reading</button>
         </div>
 
       </div>
@@ -96,7 +96,7 @@
     <nav class="card nav">
       <a href="principal_page.html">Home</a>
       <a href="historical.html">History</a>
-      <a href="checkin.html">Check-in
+      <a href="checkin.html">Check-in</a>
       <a href="BodyAi.html">Body</a>
       <a href="sensors.html" class="activo">Sensors </a>
       <a>Settings</a>
@@ -104,8 +104,7 @@
 
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_client.js"></script>
+  <script src="ble_codec.js"></script>
   <script src="sensors.js"></script>
 </body>
 </html>

@@ -48,6 +48,10 @@
     .member-card .info { display: grid; gap: 2px; font-size: 14px; }
     .empty { opacity: .6; font-size: 13px; text-align: center; }
   </style>
+  <!-- Shared: Supabase client, connection indicator and role guard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_client.js"></script>
+  <script src="auth_guard.js"></script>
 </head>
 <body>
   <div class="reg-page">
@@ -60,7 +64,7 @@
         <strong id="user-name">Admin name</strong>
         <small id="user-role">Administrator</small>
       </div>
-      <div class="conectado"><span class="punto"></span> Connected</div>
+      <div class="conectado"><span class="punto"></span> Checking...</div>
     </header>
 
     <!-- MEMBERS + FORM -->
@@ -111,14 +115,12 @@
     <nav class="card nav">
       <a href="admi.html">Home</a>
       <a href="history_admi.html">History</a>
-      <a class="activo" href="admi_register.html">Register</a>
+      <a class="activo" href="ast_checkin.html">Register</a>
       <a>Settings</a>
     </nav>
 
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_client.js"></script>
-  <script src="script_register.js"></script>
+  <script src="script_astroin.js"></script>
 </body>
 </html>

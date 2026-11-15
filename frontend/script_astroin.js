@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
 // ================= DATA SOURCE (TEAMMATES EDIT HERE) =================
-const API_URL = null;            // e.g. "http://localhost:3000/api"
+const REGISTER_API_URL = null;            // e.g. "http://localhost:3000/api"
 const USE_SAMPLE_DATA = true;    // false when the real API works
 const SLOTS = 4;
 
@@ -10,10 +10,10 @@ const SLOTS = 4;
  * The backend must HASH the password. It must never come back in the response.
  */
 async function saveMember(slot, data) {
-  if (USE_SAMPLE_DATA || !API_URL) {
+  if (USE_SAMPLE_DATA || !REGISTER_API_URL) {
     return { id: data.id, name: data.name, role: data.role };   // no password
   }
-  const res = await fetch(`${API_URL}/crew`, {
+  const res = await fetch(`${REGISTER_API_URL}/crew`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ slot, ...data }),
@@ -118,3 +118,6 @@ $("member-form").addEventListener("submit", async (e) => {
 });
 
 renderAll();
+// Only admins register crew members (auth_guard.js); also shows the page
+requireRole(["admin"]);
+connectLogoutButton();  // from supabase_client.js (no-op without #logout-btn)
