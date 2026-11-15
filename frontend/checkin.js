@@ -5,37 +5,25 @@
 // Profile of the signed-in user (set on page load). Its id is the owner of new readings.
 let currentProfile = null;
 
-// ===== Simulated sensors =====
-// There is no real sensor yet, so each "Measure" generates a random value.
-// Assumed ranges, inside the green zone of backend/ml/health_engine.py.
-// Glucose: NASA Inspiration4 pre-flight values.
-const SIMULATED_RANGES = {
-  heart_rate:         { min: 55,   max: 80,   decimals: 0, unit: "bpm" },
-  hrv:                { min: 35,   max: 75,   decimals: 0, unit: "ms" },
-  spo2:               { min: 96,   max: 99,   decimals: 0, unit: "%" },
-  temperature:        { min: 36.5, max: 37.2, decimals: 1, unit: "°C" },
-  systolic_pressure:  { min: 105,  max: 125,  decimals: 0, unit: "mmHg" },
-  diastolic_pressure: { min: 65,   max: 80,   decimals: 0, unit: "mmHg" },
-  glucose:            { min: 71,   max: 90,   decimals: 0, unit: "mg/dL" }
+// ===== Measurements =====
+// Values come from the (emulated) Bluetooth LE sensors: see "Sensor transport" below.
+// min / max = physiologically possible values, the same limits as the indicators
+// table (migration 003): the database rejects anything outside them.
+const MEASUREMENT_INFO = {
+  heart_rate:         { unit: "bpm",   decimals: 0, min: 20, max: 250 },
+  hrv:                { unit: "ms",    decimals: 0, min: 1,  max: 300 },
+  spo2:               { unit: "%",     decimals: 0, min: 50, max: 100 },
+  temperature:        { unit: "°C",    decimals: 1, min: 30, max: 45 },
+  systolic_pressure:  { unit: "mmHg",  decimals: 0, min: 50, max: 260 },
+  diastolic_pressure: { unit: "mmHg",  decimals: 0, min: 30, max: 160 },
+  glucose:            { unit: "mg/dL", decimals: 0, min: 20, max: 600 }
 };
 
 // The 7 values the reading needs (same names as OfflineReading in backend/main.py)
-const REQUIRED_MEASUREMENTS = Object.keys(SIMULATED_RANGES);
+const REQUIRED_MEASUREMENTS = Object.keys(MEASUREMENT_INFO);
 
 // Values measured on this page, e.g. { heart_rate: 68, spo2: 97, ... }
 const measured = {};
-
-function randomBetween(min, max, decimals) {
-  const factor = Math.pow(10, decimals);
-  const value = min + Math.random() * (max - min);
-  return Math.round(value * factor) / factor;
-}
-
-function simulateField(field) {
-  const range = SIMULATED_RANGES[field];
-  measured[field] = randomBetween(range.min, range.max, range.decimals);
-  return measured[field];
-}
 
 // Text for one button from `measured`, e.g. "68 bpm" or "115/75 mmHg".
 // Returns null if that sensor has not been measured yet.
@@ -46,19 +34,33 @@ function formatSensor(sensor) {
     if (typeof systolic !== "number" || typeof diastolic !== "number") return null;
     return systolic + "/" + diastolic + " mmHg";
   }
-  if (typeof measured[sensor] !== "number" || !SIMULATED_RANGES[sensor]) return null;
-  return measured[sensor] + " " + SIMULATED_RANGES[sensor].unit;
+  if (typeof measured[sensor] !== "number" || !MEASUREMENT_INFO[sensor]) return null;
+  return measured[sensor] + " " + MEASUREMENT_INFO[sensor].unit;
 }
 
-// Fills `measured` for one button and returns the text to show
-function simulateSensor(sensor) {
-  if (sensor === "blood_pressure") {
-    simulateField("systolic_pressure");
-    simulateField("diastolic_pressure");
-  } else {
-    simulateField(sensor);
+// Rounds decoded values and checks they are physiologically possible.
+// Returns { values } or { error }.
+function checkValues(values) {
+  const clean = {};
+  for (const [indicator, raw] of Object.entries(values)) {
+    const info = MEASUREMENT_INFO[indicator];
+    if (!info) continue;
+    if (typeof raw !== "number" || !Number.isFinite(raw)) {
+      return { error: "The sensor sent an invalid value. Measure again." };
+    }
+    const value = Math.round(raw * 10 ** info.decimals) / 10 ** info.decimals;
+    if (value < info.min || value > info.max) {
+      return { error: "Impossible value (" + value + " " + info.unit + "). Check the sensor and measure again." };
+    }
+    clean[indicator] = value;
   }
-  return formatSensor(sensor);
+  if ("systolic_pressure" in clean && clean.diastolic_pressure >= clean.systolic_pressure) {
+    return { error: "Diastolic pressure must be lower than systolic. Measure again." };
+  }
+  if (Object.keys(clean).length === 0) {
+    return { error: "No value received. Measure again." };
+  }
+  return { values: clean };
 }
 
 // ===== Keep measured values across page changes (e.g. going to panas.html) =====
@@ -105,26 +107,184 @@ function showMeasuredStatus(button, text) {
   status.classList.add("done");
 }
 
+// ===== Sensor transport =====
+// Today the sensors are emulated in the Sensors tab (sensors.js), which sends one
+// GATT-formatted packet per "Send reading" click on a BroadcastChannel.
+// Only listenToSensor() knows that:
+// to use real devices, replace its body with Web Bluetooth (see the comment inside);
+// the parsers in ble_codec.js stay the same because both give a DataView.
+const BLE_CHANNEL_NAME = "astra_ble";
+const SENSOR_TIMEOUT_MS = 10000;  // wait for the next packet
+const HRV_MIN_RR = 8;             // fewer RR intervals in the packet -> RMSSD is not reliable
+const MAX_PACKET_BYTES = 64;      // larger than any of these characteristics
+
+// Last reading per sensor, saved by sensors.js: { [sensor]: message }
+// Keyed by sensor because heart_rate and hrv share the same characteristic (0x2A37).
+const LAST_READING_KEY = "astra_ble_last";
+const READING_MAX_AGE_MS = 2 * 60 * 1000;  // older readings are not used
+
+// Returns the saved reading of this sensor if it is recent, and removes it
+function takeRecentReading(sensor) {
+  try {
+    const all = JSON.parse(localStorage.getItem(LAST_READING_KEY)) || {};
+    const msg = all[sensor];
+    if (!msg) return null;
+    delete all[sensor];
+    localStorage.setItem(LAST_READING_KEY, JSON.stringify(all));
+    const age = Date.now() - Date.parse(msg.sent_at);
+    return age >= -5000 && age <= READING_MAX_AGE_MS ? msg : null;  // small clock margin
+  } catch (error) {
+    return null;
+  }
+}
+
+// Calls onPacket(DataView) for each notification of the sensor's characteristic.
+// Returns stop(), which unsubscribes.
+function listenToSensor(sensor, onPacket) {
+  const spec = BleCodec.SENSORS[sensor];
+  if (!spec) throw new Error("Unknown sensor: " + sensor);
+  if (!("BroadcastChannel" in window)) {
+    throw new Error("This browser cannot receive the emulated sensors.");
+  }
+
+  // Packet of this characteristic -> DataView, or null to ignore it
+  function toView(msg) {
+    if (!msg || msg.uuid !== spec.uuid || !Array.isArray(msg.bytes) ||
+        msg.bytes.length === 0 || msg.bytes.length > MAX_PACKET_BYTES) {
+      return null;
+    }
+    try {
+      return BleCodec.toDataView(msg.bytes);
+    } catch (error) {
+      return null;  // not valid bytes
+    }
+  }
+
+  let stopped = false;
+
+  // 1) A reading sent shortly BEFORE Measure was pressed (saved by sensors.js).
+  //    It is used once: "Measure again" waits for a new one.
+  const recent = takeRecentReading(sensor);
+  const recentView = toView(recent);
+  if (recentView) {
+    setTimeout(function () { if (!stopped) onPacket(recentView); }, 0);
+  }
+
+  // 2) Readings sent while Measure is waiting
+  const channel = new BroadcastChannel(BLE_CHANNEL_NAME);
+  channel.onmessage = function (event) {
+    const view = toView(event.data);
+    if (view) onPacket(view);
+  };
+  return function stop() {
+    stopped = true;
+    channel.close();
+  };
+
+  /* ----- Real hardware with Web Bluetooth (NOT enabled) -----
+   * Needs Chrome/Edge, https or localhost, and a user gesture (the Measure click).
+   * requestDevice is async, so listenToSensor would become async too.
+   *
+   *   const device = await navigator.bluetooth.requestDevice({
+   *     filters: [{ services: [spec.service] }]     // e.g. 0x180D Heart Rate
+   *   });
+   *   const server = await device.gatt.connect();
+   *   const service = await server.getPrimaryService(spec.service);
+   *   const characteristic = await service.getCharacteristic(spec.characteristic);
+   *   characteristic.addEventListener("characteristicvaluechanged", function (event) {
+   *     onPacket(event.target.value);               // DataView -> same parsers
+   *   });
+   *   await characteristic.startNotifications();   // also subscribes to indications
+   *   return function stop() {
+   *     characteristic.stopNotifications().catch(function () {});
+   *     device.gatt.disconnect();
+   *   };
+   *
+   * Blood Pressure, Temperature and PLX Spot-Check measurements are indicated, not
+   * notified (startNotifications() handles both). Glucose Measurement records are
+   * only sent after a request on the Record Access Control Point (0x2A52).
+   */
+}
+
+// Waits for the next reading of a sensor and decodes it. Keeps only the FIRST packet:
+// finish() closes the subscription, so any extra reading is ignored.
+// Resolves to { indicator: value }; rejects with a message for the user.
+// hrv: RMSSD of the RR intervals inside that one 0x2A37 packet.
+function measureSensor(sensor) {
+  const spec = BleCodec.SENSORS[sensor];
+
+  return new Promise(function (resolve, reject) {
+    let done = false;
+    let stop = null;
+
+    function finish(error, values) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (stop) stop();
+      if (error) reject(error); else resolve(values);
+    }
+
+    const timer = setTimeout(function () {
+      finish(new Error("No signal. Open the Sensors tab and press Send reading."));
+    }, SENSOR_TIMEOUT_MS);
+
+    try {
+      stop = listenToSensor(sensor, function (view) {
+        if (done) return;
+        let decoded;
+        try {
+          decoded = spec.decode(view);
+        } catch (error) {
+          finish(new Error("Could not read the sensor data. Measure again."));
+          return;
+        }
+
+        if (sensor !== "hrv") {
+          finish(null, spec.toIndicators(decoded));
+          return;
+        }
+
+        const rr = decoded.rrIntervalsMs;
+        if (rr.length < HRV_MIN_RR) {
+          finish(new Error("Not enough heartbeats in the reading (" + rr.length + " RR). Measure again."));
+          return;
+        }
+        finish(null, { hrv: BleCodec.computeRmssd(rr) });
+      });
+    } catch (error) {
+      finish(error);
+    }
+  });
+}
+
 // ===== Measurement buttons =====
-// Show a spinning circle for 5 seconds, then a simulated value.
 const measureButtons = document.querySelectorAll(".measure-btn");
 
 measureButtons.forEach(function (button) {
-  button.addEventListener("click", function () {
+  button.addEventListener("click", async function () {
+    const sensor = button.dataset.sensor;
     const status = button.parentElement.querySelector(".measure-status");
 
     // "Connecting..." text with a small spinning circle (fixed HTML, no user data)
     button.disabled = true;
     button.innerHTML = 'Connecting... <span class="spinner"></span>';
-    status.textContent = "Connecting to sensor";
+    status.textContent = "Waiting for the sensor... (press Send reading in the Sensors tab)";
     status.classList.remove("done");
 
-    // Wait 5 seconds (5000 ms)
-    setTimeout(function () {
-      const text = simulateSensor(button.dataset.sensor);
+    try {
+      const decoded = await measureSensor(sensor);
+      const result = checkValues(decoded);
+      if (result.error) throw new Error(result.error);
+
+      Object.assign(measured, result.values);
       saveMeasured();
-      showMeasuredStatus(button, text);
-    }, 5000);
+      showMeasuredStatus(button, formatSensor(sensor));
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = formatSensor(sensor) ? "Measure again" : "Measure";
+      status.textContent = error.message;  // our own text, set with textContent
+    }
   });
 });
 
