@@ -3,45 +3,48 @@
 // Strategy: network-first (fresh file when online, cached copy when offline).
 // API calls (FastAPI /sync, /analysis) and Supabase are NEVER cached.
 
-const CACHE_NAME = "astra-cache-v1";  // change the version to drop old copies
+const CACHE_NAME = "astra-cache-v3";  // change the version to drop old copies
 
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
+// Every HTML, CSS and JS file of frontend/ (+ images). Missing files are skipped.
 const APP_FILES = [
   "./",
   // Pages
-  "index.html",
-  "principal_page.html",
-  "checkin.html",
-  "panas.html",
-  "historical.html",
-  "history_admi.html",
+  "BodyAi.html",
   "admi.html",
   "ast_checkin.html",
-  "BodyAi.html",
+  "checkin.html",
+  "historical.html",
+  "history_admi.html",
+  "index.html",
+  "panas.html",
+  "principal_page.html",
   "sensors.html",
   // Styles
-  "styles.css",
-  "style_login.css",
-  "checkin.css",
-  "panas.css",
-  "historial.css",
+  "BodyAi_style.css",
   "admi.css",
-  "admi_register.css",
   "astro_in.css",
+  "checkin.css",
+  "historial.css",
+  "panas.css",
   "sensors.css",
+  "style_login.css",
+  "styles.css",
   // Scripts
-  "supabase_client.js",
-  "script_login.js",
-  "principal_page.js",
+  "admi.js",
+  "auth_guard.js",
+  "ble_codec.js",
   "checkin.js",
   "panas.js",
-  "script_historical.js",
+  "principal_page.js",
+  "script_BodyAi.js",
   "script_admi.js",
   "script_astroin.js",
-  "script_register.js",
-  "admi.js",
+  "script_historical.js",
+  "script_login.js",
   "sensors.js",
+  "supabase_client.js",
   // Images
   "assets/BP.jpg",
   "assets/background.jpg",

@@ -1,85 +1,127 @@
 // =====================================================
-//  HISTORY PAGE
-//  Teammates: only edit the section "DATA SOURCE" below.
+//  HISTORY PAGE (crew + leader)
+//  Uses supabaseClient (supabase_client.js) and requireRole (auth_guard.js).
+//
+//  Who sees what (enforced by Supabase RLS, migrations 002 / 007 / 010):
+//    crew   -> their own full history + the LATEST value of each crewmate
+//              (crew_latest). Crewmates' names are not clickable, and
+//              ?id=<someone else> is ignored.
+//    leader -> the same + can open a crewmate's full history (?id=<member>),
+//              updated live with Supabase Realtime.
+//  Hiding things here is only UX: RLS returns nothing the role may not see.
 // =====================================================
 
 const $ = (id) => document.getElementById(id);
 
-// ================= DATA SOURCE (TEAMMATES EDIT HERE) =================
-const HISTORY_API_URL = null;            // e.g. "http://localhost:3000/api/history"
-const USE_SAMPLE_DATA = true;    // set to false when the real API works
-
-/**
- * Must return a Promise that resolves to:
- * {
- *   user:    { name, role, photo },
- *   source:  "Biometric sensor ...",
- *   chart:   { unit, range: {min, max}, points: [{ label, value }] },
- *   records: [{ datetime, indicator, value, source: "sensor"|"manual", notes }],
- *   team:    [{ name, value, unit, status: "normal"|"follow"|"attention", photo }]
- * }
- * indicator: "hr" | "spo2" | "bp" | "glucose" | "temp"
- * days: 7 | 14 | 30
- */
-async function getHistoryData(indicator, days) {
-  if (USE_SAMPLE_DATA || !HISTORY_API_URL) return buildSampleData(indicator, days);
-
-  const res = await fetch(`${HISTORY_API_URL}?indicator=${indicator}&days=${days}`);
-  if (!res.ok) throw new Error("Status " + res.status);
-  return res.json();
-}
-
-// ================= INDICATORS (icon changes with the selection) =================
+// ================= INDICATORS =================
+// column = daily_readings column / measurements.indicator code.
+// range  = GREEN zone of the health engine (backend/ml/health_engine.py):
+//   HR 50-100 bpm at rest (AHA) · SpO2 >= 95 % (BTS) · systolic 90-129 mmHg
+//   (ACC/AHA 2017, ESC/ESH 2018) · glucose 55-180 mg/dL · temperature < 38 °C (Stahn 2017)
 const INDICATORS = {
-  hr:      { label: "Heart rate",       unit: "BPM",   range: { min: 60, max: 100 },  base: 72,   spread: 10,  icon: "assets/recourse2.png" },
-  spo2:    { label: "SpO₂",             unit: "%",     range: { min: 95, max: 100 },  base: 98,   spread: 2,   icon: "assets/oxigen.png" },
-  bp:      { label: "Blood pressure",   unit: "mmHg",  range: { min: 90, max: 120 },  base: 118,  spread: 8,   icon: "assets/BP.jpg" },
-  glucose: { label: "Glucose",          unit: "mg/dL", range: { min: 70, max: 100 },  base: 92,   spread: 8,   icon: "assets/gluco.png" },
-  temp:    { label: "Body temperature", unit: "°C",    range: { min: 36, max: 37.5 }, base: 36.8, spread: 0.6, icon: null },
+  hr:      { label: "Heart rate",                unit: "BPM",   column: "heart_rate",        range: { min: 50, max: 100 }, icon: "assets/recourse2.png" },
+  spo2:    { label: "SpO₂",                      unit: "%",     column: "spo2",              range: { min: 95, max: 100 }, icon: "assets/oxigen.png" },
+  bp:      { label: "Blood pressure (systolic)", unit: "mmHg",  column: "systolic_pressure", range: { min: 90, max: 129 }, icon: "assets/BP.jpg",
+             extraColumn: "diastolic_pressure" },
+  glucose: { label: "Glucose",                   unit: "mg/dL", column: "glucose",           range: { min: 55, max: 180 }, icon: "assets/gluco.png" },
+  temp:    { label: "Body temperature",          unit: "°C",    column: "temperature",       range: { min: 35, max: 38 },  icon: null },
 };
 
-// ================= SAMPLE DATA (delete when the API works) =================
-function buildSampleData(indicator, days) {
-  const cfg = INDICATORS[indicator];
-  const today = 84;
-  const n = Math.min(Number(days), 10);
-  const points = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const wave = Math.sin((today - i) * 1.7) * cfg.spread;
-    points.push({ label: "Day " + (today - i), value: Math.round((cfg.base + wave) * 10) / 10 });
-  }
-  const fmt = (v) => (indicator === "bp" ? `${Math.round(v)}/76` : v) + " " + cfg.unit;
-  const records = points.slice().reverse().slice(0, 4).map((p, i) => ({
-    datetime: `${p.label} · ${["09:15", "21:30", "08:45", "20:10"][i]}`,
-    indicator: cfg.label,
-    value: fmt(p.value),
-    source: i === 2 ? "manual" : "sensor",
-    notes: i === 1 ? "After exercise." : i === 2 ? "Slight fatigue." : "No notes.",
-  }));
-  const names = ["Elena Torres", "Marco Silva", "Mei Chen", "Daniel Kim"];
-  const status = ["normal", "normal", "follow", "normal"];
-  const team = names.map((name, i) => ({
-    name,
-    value: Math.round((cfg.base + (i - 1) * cfg.spread * 0.4) * 10) / 10,
-    unit: cfg.unit,
-    status: status[i],
-    photo: null,
-  }));
-  return {
-    user: { name: "Elena Torres", role: "Cmdr. – Mission Day 84", photo: "assets/profile.png" },
-    source: "Biometric sensor integrated in the ship",
-    chart: { unit: cfg.unit, range: cfg.range, points },
-    records,
-    team,
+// Color of a single value: same thresholds as health_engine.clinical() with
+// adaptation 0 (at rest). Only a visual hint for the team panel; crewmates'
+// real traffic lights are private (RLS) unless you are the leader.
+function classifyValue(indicator, value, extra) {
+  if (value == null) return "";
+  const v = Number(value);
+  const rules = {
+    hr:      () => (v > 120 || v < 40) ? "attention" : (v > 100 || v < 50) ? "follow" : "normal",
+    spo2:    () => v < 92 ? "attention" : v < 95 ? "follow" : "normal",
+    bp:      () => {
+      const d = extra == null ? 0 : Number(extra);
+      if (v >= 140 || d >= 90 || v < 85) return "attention";
+      if (v >= 130 || d >= 85 || v < 90) return "follow";
+      return "normal";
+    },
+    glucose: () => (v < 54 || v > 250) ? "attention" : (v < 55 || v > 180) ? "follow" : "normal",
+    temp:    () => v >= 39 ? "attention" : v >= 38 ? "follow" : "normal",
   };
+  return rules[indicator] ? rules[indicator]() : "";
 }
 
-// ================= RENDER FUNCTIONS =================
-// SECURITY: data from the database is ALWAYS shown with textContent
-// or setAttribute, never with innerHTML. This way, if a note contains
-// HTML or <script>, it is shown as plain text and never runs.
+const STATUS_FROM_LIGHT = { green: "normal", yellow: "follow", red: "attention" };
+const LIGHT_TEXT = { green: "Normal", yellow: "Follow-up", red: "Needs attention" };
 
-// Creates an element with an optional class and text (text is safe)
+// ================= STATE =================
+let me = null;          // signed-in profile
+let mates = [];         // crew_latest rows (all indicators) for my crewmates
+let targetId = null;    // whose history is on screen
+let requestId = 0;
+let liveChannel = null;
+
+const isLeader = () => me && me.role === "leader";
+
+function sinceDate(days) {
+  return new Date(Date.now() - Number(days) * 86400000);
+}
+
+// ================= DATA SOURCE (Supabase) =================
+
+// One row per day -> chart points + adaptation
+async function fetchDaily(astronautId, days) {
+  const { data, error } = await supabaseClient
+    .from("daily_readings")
+    .select("day, heart_rate, spo2, systolic_pressure, diastolic_pressure, glucose, temperature, adaptation")
+    .eq("astronaut_id", astronautId)
+    .gte("day", sinceDate(days).toISOString().slice(0, 10))
+    .order("day", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Every measurement of the chosen indicator -> "Detailed log"
+async function fetchRecords(astronautId, indicator, days) {
+  const cfg = INDICATORS[indicator];
+  const codes = cfg.extraColumn ? [cfg.column, cfg.extraColumn] : [cfg.column];
+  const { data, error } = await supabaseClient
+    .from("readings_detailed")
+    .select("taken_date, taken_time, indicator_name, value, unit, source, sensor_name, context")
+    .eq("astronaut_id", astronautId)
+    .eq("status", "taken")
+    .in("indicator", codes)
+    .gte("taken_at", sinceDate(days).toISOString())
+    .order("taken_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Traffic lights of the period (latest analysis of each day)
+async function fetchAnalyses(astronautId, days) {
+  const { data, error } = await supabaseClient
+    .from("health_analyses")
+    .select("day, traffic_light, clinical_reasons, deviations, detected_by_ml, analyzed_at")
+    .eq("astronaut_id", astronautId)
+    .gte("day", sinceDate(days).toISOString().slice(0, 10))
+    .order("analyzed_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const byDay = {};
+  for (const a of data) {
+    if (!byDay[a.day]) byDay[a.day] = a;
+  }
+  return byDay;
+}
+
+// Crewmates' latest value of every indicator (security definer RPC, migration 011)
+async function fetchTeam() {
+  const { data, error } = await supabaseClient.rpc("crew_latest", { p_indicator: null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ================= RENDER HELPERS =================
+// SECURITY: data from the database is ALWAYS shown with textContent
+// or setAttribute, never with innerHTML.
+
 function makeEl(tag, className, text) {
   const el = document.createElement(tag);
   if (className) el.className = className;
@@ -87,12 +129,10 @@ function makeEl(tag, className, text) {
   return el;
 }
 
-// Shows a simple message (e.g. "No records") inside a box
 function showEmpty(box, text) {
   box.replaceChildren(makeEl("p", "empty", text));
 }
 
-// Only these values are allowed as CSS classes (anything else is ignored)
 const ALLOWED_SOURCES = ["sensor", "manual"];
 const ALLOWED_STATUS = ["normal", "follow", "attention"];
 
@@ -100,17 +140,11 @@ function safeClass(value, allowed) {
   return allowed.includes(value) ? value : "";
 }
 
-function showUser(u) {
-  if (!u) return;
-  $("user-name").textContent = u.name;
-  $("user-role").textContent = u.role;
-  if (u.photo) document.querySelector(".foto-perfil").src = u.photo;
-}
+const round1 = (v) => Math.round(Number(v) * 10) / 10;
 
 // ----- Chart (SVG) -----
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-// Creates an SVG element and sets its attributes
 function makeSvg(tag, attrs) {
   const el = document.createElementNS(SVG_NS, tag);
   for (const name in attrs) {
@@ -136,7 +170,6 @@ function showChart(chart) {
 
   const svg = makeSvg("svg", { viewBox: `0 0 ${W} ${H}` });
 
-  // Horizontal grid lines + value labels
   for (let i = 0; i <= 4; i++) {
     const v = min + ((max - min) * i) / 4;
     svg.appendChild(makeSvg("line", { class: "axis", x1: L, x2: W - R, y1: y(v), y2: y(v) }));
@@ -145,7 +178,6 @@ function showChart(chart) {
     svg.appendChild(label);
   }
 
-  // Normal range band
   if (chart.range) {
     svg.appendChild(makeSvg("rect", {
       class: "range-band",
@@ -156,11 +188,9 @@ function showChart(chart) {
     }));
   }
 
-  // Line
   const path = vals.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join(" ");
   svg.appendChild(makeSvg("path", { class: "series", d: path }));
 
-  // Points + day labels (label and unit come from the database -> textContent)
   chart.points.forEach((p, i) => {
     const circle = makeSvg("circle", { class: "data-point", cx: x(i), cy: y(vals[i]), r: 4.5 });
     const tooltip = makeSvg("title", {});
@@ -176,7 +206,7 @@ function showChart(chart) {
   box.replaceChildren(svg);
 }
 
-// ----- Records table -----
+// ----- Detailed log -----
 function showRecords(rows) {
   const body = $("records-body");
   if (!rows || !rows.length) {
@@ -188,7 +218,7 @@ function showRecords(rows) {
     return;
   }
 
-  body.replaceChildren(); // clear the table
+  body.replaceChildren();
 
   rows.forEach((r) => {
     const tr = makeEl("tr");
@@ -196,7 +226,6 @@ function showRecords(rows) {
     tr.appendChild(makeEl("td", "", r.indicator));
     tr.appendChild(makeEl("td", "", r.value));
 
-    // Source tag: colored dot + "Manual" or "Sensor"
     const sourceTd = makeEl("td");
     const tag = makeEl("span", "source-tag");
     tag.appendChild(makeEl("i", "dot " + safeClass(r.source, ALLOWED_SOURCES)));
@@ -209,49 +238,168 @@ function showRecords(rows) {
   });
 }
 
-// ----- Team list -----
-function showTeam(list) {
-  const box = $("team-list");
-  if (!list || !list.length) {
-    showEmpty(box, "No data loaded");
+// ----- Daily status (traffic lights) + adaptation history -----
+function showStatus(rows) {
+  const body = $("status-body");
+  if (!rows || !rows.length) {
+    const tr = makeEl("tr");
+    const td = makeEl("td", "empty", "No records");
+    td.colSpan = 4;
+    tr.appendChild(td);
+    body.replaceChildren(tr);
     return;
   }
 
-  box.replaceChildren(); // clear the list
+  body.replaceChildren();
 
-  list.forEach((m, i) => {
-    const item = makeEl("div", "team-item" + (i === 0 ? " active" : ""));
+  rows.forEach((r) => {
+    const tr = makeEl("tr");
+    tr.appendChild(makeEl("td", "", r.day));
 
-    // Photo, or first letter of the name if there is no photo
-    if (m.photo) {
-      const img = makeEl("img", "avatar");
-      img.src = m.photo;
-      img.alt = m.name;
-      item.appendChild(img);
+    const statusTd = makeEl("td");
+    if (r.light) {
+      statusTd.appendChild(makeEl("i", "dot " + safeClass(STATUS_FROM_LIGHT[r.light], ALLOWED_STATUS)));
+      statusTd.append(" " + (LIGHT_TEXT[r.light] || r.light));
     } else {
-      item.appendChild(makeEl("div", "avatar", (m.name || "?")[0]));
+      statusTd.textContent = "--";
     }
+    tr.appendChild(statusTd);
+
+    tr.appendChild(makeEl("td", "", r.adaptation == null ? "--" : Math.round(r.adaptation * 100) + "%"));
+    tr.appendChild(makeEl("td", "", r.reasons.length ? r.reasons.join("; ") : "--"));
+    body.appendChild(tr);
+  });
+}
+
+// ----- Team panel -----
+// list: [{ id, name, value, unit, status }]
+function showTeam(list) {
+  const box = $("team-list");
+  if (!list || !list.length) {
+    showEmpty(box, me && me.crew_id ? "No crewmates yet" : "You are not in a crew yet");
+    return;
+  }
+
+  box.replaceChildren();
+
+  list.forEach((m) => {
+    const item = makeEl("div", "team-item" + (m.id === targetId ? " active" : ""));
+    item.appendChild(makeEl("div", "avatar", (m.name || "?")[0]));
 
     const info = makeEl("div", "info");
     info.appendChild(makeEl("strong", "", m.name));
     item.appendChild(info);
 
     const value = makeEl("div", "value");
-    value.appendChild(makeEl("i", "dot " + safeClass(m.status, ALLOWED_STATUS)));
-    value.append(" " + m.value);
-    value.appendChild(makeEl("small", "", m.unit));
+    if (m.value == null) {
+      value.append("--");
+    } else {
+      value.appendChild(makeEl("i", "dot " + safeClass(m.status, ALLOWED_STATUS)));
+      value.append(" " + m.value);
+      value.appendChild(makeEl("small", "", m.unit));
+    }
     item.appendChild(value);
+
+    // Only the leader can open a crewmate's full history
+    if (isLeader()) {
+      item.style.cursor = "pointer";
+      item.tabIndex = 0;
+      item.setAttribute("role", "button");
+      item.title = "View " + m.name + "'s history";
+      item.addEventListener("click", () => viewMember(m.id));
+      item.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); viewMember(m.id); }
+      });
+    }
 
     box.appendChild(item);
   });
 }
 
-function showAll(d) {
-  showUser(d.user);
-  $("data-source").textContent = d.source || "--";
-  showChart(d.chart);
-  showRecords(d.records);
-  showTeam(d.team);
+// ================= BUILD VIEW MODELS =================
+
+// crew_latest rows -> one entry per crewmate for the chosen indicator
+function teamFor(indicator) {
+  const cfg = INDICATORS[indicator];
+  const people = new Map();
+  for (const row of mates) {
+    if (!people.has(row.astronaut_id)) {
+      people.set(row.astronaut_id, {
+        id: row.astronaut_id,
+        name: row.astronaut || row.astronaut_code || "?",
+        main: null,
+        extra: null,
+      });
+    }
+    const p = people.get(row.astronaut_id);
+    if (row.indicator === cfg.column) p.main = row.value;
+    if (cfg.extraColumn && row.indicator === cfg.extraColumn) p.extra = row.value;
+  }
+  return [...people.values()].map((p) => ({
+    id: p.id,
+    name: p.name,
+    value: p.main == null ? null
+      : cfg.extraColumn && p.extra != null ? `${Math.round(p.main)}/${Math.round(p.extra)}` : round1(p.main),
+    unit: cfg.unit,
+    status: classifyValue(indicator, p.main, p.extra),
+  }));
+}
+
+function mateName(id) {
+  const row = mates.find((m) => m.astronaut_id === id);
+  return row ? (row.astronaut || row.astronaut_code || "crewmate") : "crewmate";
+}
+
+function buildChart(indicator, daily) {
+  const cfg = INDICATORS[indicator];
+  return {
+    unit: cfg.unit,
+    range: cfg.range,
+    points: daily
+      .filter((d) => d[cfg.column] != null)
+      .map((d) => ({ label: d.day.slice(5), value: round1(d[cfg.column]) })),
+  };
+}
+
+function buildRecords(rows) {
+  return rows.map((r) => ({
+    datetime: `${r.taken_date} · ${r.taken_time}`,
+    indicator: r.indicator_name,
+    value: `${round1(r.value)} ${r.unit}`,
+    source: ["manual", "questionnaire"].includes(r.source) ? "manual" : "sensor",
+    notes: r.context || r.sensor_name || "",
+  }));
+}
+
+function buildStatus(daily, analysesByDay) {
+  const days = new Map();
+  for (const d of daily) {
+    days.set(d.day, { day: d.day, light: null, reasons: [], adaptation: d.adaptation });
+  }
+  for (const [day, a] of Object.entries(analysesByDay)) {
+    const row = days.get(day) || { day, light: null, reasons: [], adaptation: null };
+    row.light = a.traffic_light;
+    row.reasons = [...(a.clinical_reasons || []), ...(a.deviations || []).map((d) => "vs normal: " + d)];
+    if (a.detected_by_ml) row.reasons.push("unusual pattern (ML)");
+    days.set(day, row);
+  }
+  return [...days.values()].sort((a, b) => (a.day < b.day ? 1 : -1));  // newest first
+}
+
+// ================= HEADER + "VIEWING" BANNER =================
+
+function showMe() {
+  $("user-name").textContent = me.name || me.astronaut_code || "Astronaut";
+  $("user-role").textContent = [me.astronaut_code, me.role].filter(Boolean).join(" · ");
+}
+
+function showViewing() {
+  const mine = targetId === me.id;
+  $("viewing-banner").style.display = mine ? "none" : "";
+  $("viewing-text").textContent = mine ? "" : "Viewing data of " + mateName(targetId) + " (live)";
+  $("history-subtitle").textContent = mine
+    ? "Explore your records and discover trends"
+    : "Health history of " + mateName(targetId);
 }
 
 // ================= SELECTED INDICATOR: title + ICON =================
@@ -266,28 +414,111 @@ function updateIndicatorUI(indicator) {
 }
 
 // ================= LOAD =================
-let requestId = 0;
 
 async function loadHistory() {
   const indicator = $("indicator-filter").value;
   const days = $("period-filter").value;
   updateIndicatorUI(indicator);
+  showViewing();
+  if (!targetId) return;
 
   const current = ++requestId;
+  const who = targetId;
   showEmpty($("chart"), "Loading...");
 
   try {
-    const data = await getHistoryData(indicator, days);
-    if (current !== requestId) return;
-    showAll(data);
+    const [daily, records, analyses] = await Promise.all([
+      fetchDaily(who, days),
+      fetchRecords(who, indicator, days),
+      fetchAnalyses(who, days),
+    ]);
+    if (current !== requestId) return;  // a newer request is running
+    showChart(buildChart(indicator, daily));
+    showRecords(buildRecords(records));
+    showStatus(buildStatus(daily, analyses));
+    $("data-source").textContent = "Supabase · live updates";
   } catch (err) {
     console.error("Could not load history:", err);
     if (current !== requestId) return;
-    showChart(null); showRecords(null); showTeam(null);
+    showEmpty($("chart"), navigator.onLine ? "Could not load data" : "Offline: history needs a connection");
+    showRecords(null);
+    showStatus(null);
+    $("data-source").textContent = navigator.onLine ? "--" : "Offline";
   }
 }
 
-$("indicator-filter").addEventListener("change", loadHistory);
+async function loadTeam() {
+  try {
+    mates = await fetchTeam();
+  } catch (err) {
+    console.error("Could not load team:", err);
+    mates = [];
+  }
+  showTeam(teamFor($("indicator-filter").value));
+}
+
+// ================= LEADER: VIEW A CREWMATE =================
+
+// Leader -> only crewmates; crew -> always themselves (?id= is ignored).
+function allowedTarget(id) {
+  if (!id || id === me.id) return me.id;
+  if (isLeader() && mates.some((m) => m.astronaut_id === id)) return id;
+  return me.id;
+}
+
+function setUrlId(id) {
+  const url = new URL(location.href);
+  if (id && id !== me.id) url.searchParams.set("id", id);
+  else url.searchParams.delete("id");
+  window.history.replaceState({}, "", url);
+}
+
+function viewMember(id) {
+  targetId = allowedTarget(id);
+  setUrlId(targetId);
+  showTeam(teamFor($("indicator-filter").value));  // move the "active" highlight
+  subscribeLive();
+  loadHistory();
+}
+
+$("back-to-mine").addEventListener("click", () => viewMember(me.id));
+
+// ================= REALTIME =================
+// New measurements / analyses are pushed by Supabase (filtered by RLS).
+// A check-in inserts many rows at once, so reloads are grouped.
+let reloadTimer = null;
+const pendingReload = { history: false, team: false };
+
+function scheduleReload(part) {
+  pendingReload[part] = true;
+  clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(() => {
+    if (pendingReload.team) loadTeam();
+    if (pendingReload.history) loadHistory();
+    pendingReload.history = pendingReload.team = false;
+  }, 800);
+}
+
+function subscribeLive() {
+  if (liveChannel) supabaseClient.removeChannel(liveChannel);
+  const who = targetId;
+  liveChannel = supabaseClient
+    .channel("history-" + who)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "measurements" }, (payload) => {
+      if (payload.new && payload.new.user_id === who) scheduleReload("history");
+      scheduleReload("team");
+    })
+    .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "health_analyses", filter: "astronaut_id=eq." + who },
+        () => scheduleReload("history"))
+    .subscribe();
+}
+
+// ================= FILTERS + BUTTONS =================
+$("indicator-filter").addEventListener("change", () => {
+  showTeam(teamFor($("indicator-filter").value));  // same data, other indicator
+  loadHistory();
+});
 $("period-filter").addEventListener("change", loadHistory);
 $("export-btn").addEventListener("click", () => alert("Export will be connected to the backend."));
 $("details-btn").addEventListener("click", () => alert("Details view pending."));
@@ -324,4 +555,15 @@ document.querySelectorAll(".select-box").forEach((box) => {
 document.addEventListener("click", () =>
   document.querySelectorAll(".select-box.open").forEach((b) => b.classList.remove("open")));
 
-loadHistory();
+// ================= START =================
+connectLogoutButton();  // from supabase_client.js (no-op without #logout-btn)
+
+(async function init() {
+  me = await requireRole(["crew", "leader"]);  // auth_guard.js
+  if (!me) return;
+  showMe();
+
+  await loadTeam();  // needed first: the leader's ?id= must be one of these crewmates
+  const idFromUrl = new URLSearchParams(location.search).get("id");
+  viewMember(idFromUrl);
+})();
