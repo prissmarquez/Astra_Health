@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check in - Astra Health</title>
+  <!-- Same styles as the dashboard (header, cards, nav) -->
+  <link rel="stylesheet" href="styles.css">
+  <!-- Styles only for this page -->
+  <link rel="stylesheet" href="checkin.css">
+</head>
+<body>
+  <div class="checkin-page">
+
+    <!-- HEADER (same as dashboard) -->
+    <header class="card header">
+      <img src="nasa.png" alt="NASA" class="logo-nasa">
+      <img src="perfil.png" alt="Profile picture" class="foto-perfil">
+
+      <div class="usuario">
+        <strong id="nombre-usuario">Username</strong>
+        <small id="rol-usuario">Role</small>
+      </div>
+
+      <div class="bloque alerta">
+        <small> Next check-in in:</small>
+        <strong id="cuenta" class="reloj">--:--:--</strong>
+        <div class="barra rojo"><div id="barra-cuenta"></div></div>
+      </div>
+
+      <div class="conectado"><span class="punto"></span> Connected</div>
+    </header>
+
+    <!-- DAILY LOG -->
+    <main class="card daily-log">
+      <div class="log-title">
+        <span class="log-title-icon">📋</span>
+        <div>
+          <h3>Daily Health Indicators Log</h3>
+          <small>Keep regular track of your health</small>
+        </div>
+      </div>
+
+      <div class="log-grid">
+
+        <!-- Heart rate -->
+        <div class="measure-box hr-box">
+          <span class="measure-icon icon-red">❤</span>
+          <div class="measure-info">
+            <strong>Heart Rate (HR)</strong>
+            <button class="measure-btn" data-sensor="heart rate">Measure</button>
+            <small class="measure-status"></small>
+          </div>
+        </div>
+
+        <!-- HRV -->
+        <div class="measure-box hrv-box">
+          <span class="measure-icon icon-blue">📈</span>
+          <div class="measure-info">
+            <strong>HRV <span class="soft">(Heart Rate Variability)</span></strong>
+            <button class="measure-btn" data-sensor="HRV">Measure</button>
+            <small class="measure-status"></small>
+          </div>
+        </div>
+
+        <!-- Exercise -->
+        <div class="exercise-box">
+          <span>Did you exercise today?</span>
+          <label class="choice"><input type="radio" name="exercise" value="yes"> Yes</label>
+          <label class="choice"><input type="radio" name="exercise" value="no"> No</label>
+        </div>
+
+        <!-- Sleep -->
+        <div class="sleep-box">
+          <label for="sleep"><strong>Sleep duration and quality</strong> <span class="soft">(Text entry)</span></label>
+          <input type="text" id="sleep" placeholder="e.g., 7 hours, woke up twice">
+        </div>
+
+        <!-- SpO2 -->
+        <div class="measure-box spo2-box">
+          <span class="measure-icon icon-blue">💧</span>
+          <div class="measure-info">
+            <strong>SpO₂ <span class="soft">(Pulse oximetry)</span></strong>
+            <button class="measure-btn" data-sensor="SpO2">Measure</button>
+            <small class="measure-status"></small>
+          </div>
+        </div>
+
+        <!-- Temperature -->
+        <div class="measure-box temp-box">
+          <span class="measure-icon icon-purple">🌡</span>
+          <div class="measure-info">
+            <strong>Body Temperature</strong>
+            <button class="measure-btn" data-sensor="temperature">Measure</button>
+            <small class="measure-status"></small>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- PANAS QUESTIONNAIRE -->
+    <section class="card panas">
+      <h3>Mood questionnaire <span class="soft">(PANAS)</span></h3>
+      <p class="panas-instructions">
+        Indicate to what extent you have felt this way <strong>today</strong>.<br>
+        <small>1 = Very slightly or not at all · 2 = A little · 3 = Moderately · 4 = Quite a bit · 5 = Extremely</small>
+      </p>
+
+      <table class="panas-table">
+        <thead>
+          <tr>
+            <th>Feeling</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th>5</th>
+          </tr>
+        </thead>
+        <!-- The 20 rows are created by checkin.js -->
+        <tbody id="panasRows"></tbody>
+      </table>
+
+      <div class="panas-results">
+        <span>Answered: <b id="panasAnswered">0</b> / 20</span>
+        <span>Positive affect: <b id="panasPositive">-</b> / 50</span>
+        <span>Negative affect: <b id="panasNegative">-</b> / 50</span>
+      </div>
+    </section>
+
+    <!-- TIP + FINISH -->
+    <div class="log-footer">
+      <div class="card tip">
+        <span class="tip-icon">ℹ</span>
+        <div>
+          <strong>Tip of the day</strong><br>
+          <small>Stay hydrated. Water is key to your health in space.</small>
+        </div>
+      </div>
+      <button class="btn-principal finish-btn" id="finishBtn">Finish Mission Log</button>
+    </div>
+    <p class="finish-message" id="finishMessage"></p>
+
+    <!-- NAVIGATION (same as dashboard) -->
+    <nav class="card nav">
+      <a href="principal_page.html">Home</a>
+      <a href="historical.html">History</a>
+      <a class="activo" href="checkin.html">check in</a>
+      <a>Body</a>
+      <a>settings</a>
+    </nav>
+
+  </div>
+
+  <script src="checkin.js"></script>
+</body>
+</html>

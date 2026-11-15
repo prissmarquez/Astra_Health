@@ -1,0 +1,318 @@
+/* ===== Check-in page =====
+   Uses the colors and classes from styles.css
+   (--card, --border, --blue, .card, .header, .nav, .btn-principal) */
+
+/* Page layout: header, log, footer, nav */
+.checkin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ===== Log card ===== */
+.log-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.log-title h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.log-title small {
+  opacity: 0.8;
+}
+
+.log-title-icon {
+  font-size: 28px;
+}
+
+.soft {
+  font-weight: normal;
+  opacity: 0.75;
+}
+
+/* Two columns of measurement boxes */
+.log-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "hr       hrv"
+    "spo2     temp"
+    "exercise sleep";
+  gap: 12px;
+}
+
+.hr-box       { grid-area: hr; }
+.hrv-box      { grid-area: hrv; }
+.exercise-box { grid-area: exercise; }
+.sleep-box    { grid-area: sleep; }
+.spo2-box     { grid-area: spo2; }
+.temp-box     { grid-area: temp; }
+
+/* Inner boxes share the same look */
+.measure-box,
+.sleep-box,
+.exercise-box {
+  background: rgba(20, 40, 90, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+/* ===== Measurement buttons (HR, HRV, SpO2, Temp) ===== */
+.measure-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.measure-icon {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.icon-red    { color: var(--red); }
+.icon-blue   { color: #4cc9ff; }
+.icon-purple { color: #8a7dff; }
+
+.measure-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.measure-btn {
+  padding: 8px 20px;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(122, 162, 255, 0.15);
+  border: 1px solid var(--blue);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.measure-btn:hover {
+  background: rgba(122, 162, 255, 0.3);
+}
+
+.measure-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.measure-status {
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--blue);
+}
+
+.measure-status.done {
+  color: var(--green);
+}
+
+/* ===== Exercise yes / no ===== */
+.exercise-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.choice input {
+  accent-color: var(--blue);
+}
+
+/* ===== Sleep text field ===== */
+.sleep-box label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.sleep-box input {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(8, 20, 50, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.sleep-box input:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+/* ===== PANAS questionnaire ===== */
+.panas-instructions {
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.panas-instructions small {
+  opacity: 0.8;
+}
+
+.panas-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.panas-table th {
+  padding: 8px;
+  font-size: 13px;
+  color: var(--blue);
+  border-bottom: 1px solid var(--border);
+}
+
+.panas-table th:first-child {
+  text-align: left;
+}
+
+.panas-table td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid rgba(42, 77, 153, 0.4);
+}
+
+.panas-table td:first-child {
+  text-align: left;
+}
+
+.panas-table tr:hover td {
+  background: rgba(122, 162, 255, 0.08);
+}
+
+.panas-table input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.panas-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(20, 40, 90, 0.5);
+  border-radius: 10px;
+}
+
+.panas-results b {
+  color: var(--green);
+}
+
+.finish-message.error {
+  color: var(--red);
+}
+
+/* ===== Tip + finish button ===== */
+.log-footer {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.tip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tip strong {
+  color: var(--yellow);
+}
+
+.tip-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--text);
+  border-radius: 50%;
+}
+
+.finish-btn {
+  margin-top: 0;
+  border-radius: 14px;
+  padding: 0 30px;
+}
+
+.finish-message {
+  min-height: 0;
+  margin: 0;
+  text-align: right;
+  color: var(--green);
+}
+
+/* Links in the bottom menu keep the menu colors */
+.nav a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ===== Small screens ===== */
+@media (max-width: 800px) {
+  .log-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hr"
+      "hrv"
+      "spo2"
+      "temp"
+      "exercise"
+      "sleep";
+  }
+
+  .log-footer {
+    flex-direction: column;
+  }
+
+  .finish-btn {
+    padding: 14px;
+  }
+
+  .panas-table th,
+  .panas-table td {
+    padding: 6px 4px;
+  }
+
+  .panas-results {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .checkin-page {
+    padding: 10px;
+  }
+}
