@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astra Health</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="dashboard">
+
+    <!-- HEADER -->
+    <header class="card header">
+      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+
+      <div class="usuario">
+        <strong id="nombre-usuario">Username</strong>
+        <small id="rol-usuario">Role</small>
+      </div>
+
+      <div class="bloque alerta">
+        <small>Next check-in in:</small>
+        <strong id="cuenta" class="reloj">--:--:--</strong>
+        <div class="barra rojo"><div id="barra-cuenta"></div></div>
+      </div>
+
+      <div class="conectado"><span class="punto"></span> Connected</div>
+    </header>
+
+    <!-- OVERALL HEALTH -->
+    <section class="card salud">
+      <h3>Overall health status</h3>
+      <div class="salud-contenido">
+        <div class="anillo" id="anillo" style="--pct: 92%">
+          <span><b id="salud-pct">92%</b><small id="salud-texto">Optimal health</small></span>
+        </div>
+        <ul class="lista-indicadores">
+          <li>
+            <span class="ico ico-rojo">❤</span>
+            <span class="etiqueta">HR</span>
+            <b class="valor" id="ind-hr">72 bpm</b>
+          </li>
+          <li>
+            <span class="ico ico-azul">💧</span>
+            <span class="etiqueta">SpO₂</span>
+            <b class="valor" id="ind-spo2">98%</b>
+          </li>
+          <li>
+            <span class="ico ico-rojo">🩸</span>
+            <span class="etiqueta">Glucose</span>
+            <b class="valor" id="ind-glu">92 mg/dL</b>
+          </li>
+          <li>
+            <span class="ico ico-morado">🧊</span>
+            <span class="etiqueta">BP</span>
+            <b class="valor" id="ind-bp">118/76 mmHg</b>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- INDICATORS CHART -->
+    <section class="card grafica">
+      <h3>Indicators chart</h3>
+      <div class="barras" id="barras"></div>
+      <small class="leyenda-g"><i class="dot-ok"></i> In range &nbsp; <i class="dot-warn"></i> Out of range</small>
+    </section>
+
+    <!-- NOTIFICATION -->
+    <section class="card notificacion">
+      <h3>Check-in notification</h3>
+      <div class="aviso">⚠️</div>
+      <p>It's time to perform<br>a new health assessment.</p>
+      <button class="btn-borde">Go to log</button>
+    </section>
+
+    <!-- INDICATORS NEEDING ATTENTION -->
+    <section class="card atencion">
+      <h3>Indicators needing attention</h3>
+      <div class="alerta-fila">
+        <span class="termo">🌡</span>
+        <div>
+          <strong id="atencion-titulo">No indicators needing attention</strong><br>
+          <small id="atencion-detalle"></small>
+        </div>
+        <button class="btn-borde claro">View details →</button>
+      </div>
+    </section>
+
+    <!-- TEAM -->
+    <section class="card equipo">
+      <h3>Team health status</h3>
+      <div class="equipo-lista" id="equipo-lista"></div>
+    </section>
+
+    <!-- DAILY ACTIVITIES -->
+    <section class="card actividades">
+      <h3>Daily activities</h3>
+      <ul id="lista-actividades"></ul>
+      <small>Daily progress: <b id="progreso-texto">0%</b></small>
+      <div class="barra verde"><div id="progreso-barra"></div></div>
+    </section>
+
+    <!-- NAVIGATION -->
+    <nav class="card nav">
+      <a class="activo" href="principal_page.html">Home</a>
+      <a href="historical.html">History</a>
+      <a href="checkin.html">Check-in</a>
+      <a href="BodyAi.html">Body</a>
+      <a>Settings</a>
+    </nav>
+
+  </div>
+
+  <script src="script_dashboard.js"></script>
+</body>
+</html>
