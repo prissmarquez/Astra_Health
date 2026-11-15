@@ -13,9 +13,9 @@ import json
 from pathlib import Path
 
 
-def cache_key(analysis: dict, context: dict, language: str) -> str:
+def cache_key(analysis: dict, context: dict) -> str:
     payload = json.dumps(
-        {"analysis": analysis, "context": context, "language": language},
+        {"analysis": analysis, "context": context},
         sort_keys=True, ensure_ascii=False, default=str,
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()

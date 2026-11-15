@@ -11,7 +11,7 @@ told never to invent data, and to mention exercise only when `exercising` is tru
 ```
 backend/IA/
 ├── explainer.py        explain(analysis, context) -> explanation (what FastAPI calls)
-├── templates.py        fallback explanation without AI (en / es)
+├── templates.py        fallback explanation without AI
 ├── cache.py            reuses explanations Claude already wrote
 ├── schemas.py          shape of an explanation
 ├── config.py           settings from .env
@@ -42,7 +42,7 @@ from explainer import explain          # backend/IA
 
 analysis = analyze(history, reading, package)
 context = {"exercising": reading["exercising"], "values": {...}}  # read from Supabase
-result = explain(analysis, context, language="es")
+result = explain(analysis, context)
 ```
 
 `result` has `summary`, `detail`, `recommendations` and `source`:
@@ -53,6 +53,7 @@ result = explain(analysis, context, language="es")
 | `cache` | Claude, earlier, for this exact input (Claude failed now) |
 | `demo` | Pre-generated scenario answer (`demo_responses.json`) |
 | `template` | No AI: fixed sentences built from the ML result |
+| `measurement_error` | A value is impossible (outside the ranges in the DB `indicators` table, e.g. 0 bpm): "Error measuring the data", no AI call |
 
 When it is not `ai`, `fallback_reason` says why (no internet, invalid key,
 no credit, timeout...). The explainer **never raises**: the app always gets an
@@ -77,8 +78,8 @@ the explainer:
 
 ```bash
 python try_reading.py                                              # asks for each value
-python try_reading.py --temperature 38.6 --heart-rate 130 --exercising --language es
-python try_reading.py --temperature 38.6 --heart-rate 130 --language es   # same, no exercise
+python try_reading.py --temperature 38.6 --heart-rate 130 --exercising
+python try_reading.py --temperature 38.6 --heart-rate 130   # same, no exercise
 python try_reading.py --temperature 39 --no-ai                     # template only, free
 ```
 

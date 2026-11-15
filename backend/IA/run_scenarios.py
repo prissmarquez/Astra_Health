@@ -2,7 +2,6 @@
 
     python run_scenarios.py                # live with Claude (4 calls)
     python run_scenarios.py --save         # also saves them to demo_responses.json
-    python run_scenarios.py --language es  # in Spanish
 
 The key check: Claude must mention exercise ONLY when exercising is true.
 demo_responses.json is the safety net for the presentation: if Claude fails
@@ -23,11 +22,9 @@ def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")   # emojis on the Windows console
     parser = argparse.ArgumentParser()
     parser.add_argument("--save", action="store_true", help="save Claude's answers as demo responses")
-    parser.add_argument("--language", choices=["en", "es"], default=None)
     args = parser.parse_args()
 
     settings = load_settings()
-    language = args.language or settings.language
     explainer = Explainer(settings)
     explainer.cache.data, explainer.demo.data = {}, {}   # force fresh answers
     explainer.cache.writable = False
@@ -38,7 +35,7 @@ def main() -> int:
 
     failed = 0
     for name, case in SCENARIOS.items():
-        result = explainer.explain(case["analysis"], case["context"], language)
+        result = explainer.explain(case["analysis"], case["context"])
         problems = check(name, result)
         status = "✅" if not problems else "❌"
         failed += bool(problems)
@@ -54,7 +51,7 @@ def main() -> int:
         if result["source"] != "ai":
             print(f"   (fallback reason: {result['fallback_reason']})")
         if args.save and result["source"] == "ai" and not problems:
-            key = cache_key(case["analysis"], case["context"], language)
+            key = cache_key(case["analysis"], case["context"])
             demo[key] = {"summary": result["summary"], "detail": result["detail"],
                          "recommendations": result["recommendations"],
                          "model": result["model"], "scenario": name}

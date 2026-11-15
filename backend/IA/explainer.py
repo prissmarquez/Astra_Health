@@ -19,6 +19,7 @@ from cache import ResponseCache, cache_key
 from config import Settings, cost_usd, load_settings
 from schemas import Explanation
 from templates import template_explanation
+from validation import measurement_error, out_of_range
 
 log = logging.getLogger("astra.ia")
 
@@ -31,14 +32,28 @@ You receive two JSON objects:
 Rules:
 - Only use facts present in "analysis" and "context". Never invent values, causes, history or diagnoses.
 - Do not change the traffic light or contradict the analysis. Explain it.
-- Mention exercise as a possible reason only if context.exercising is true. If it is false or missing, do not mention exercise, activity or training at all, not even to rule it out (never write "you were not exercising").
+- Mention exercise as a possible reason only if context.exercising is true. If it is false or missing, do not mention exercise, activity, training, physical effort or exertion at all, not even to rule it out (never write "you were not exercising") and not as advice (never write "avoid physical effort"; say "rest" instead).
 - When context.exercising is true, say that a higher temperature or heart rate is expected after exercise.
 - This is not a medical diagnosis. For red, tell the astronaut to contact the mission medical team.
 - Be calm, short and clear: "summary" in 1-2 sentences, "detail" in 2-3 sentences, at most 3 recommendations.
-- Write everything in {language}."""
+- Write everything in English.
 
-LANGUAGE_NAMES = {"en": "English", "es": "Spanish"}
+Body system focus:
+- If context.focus is present, the astronaut opened that body system in the app. Talk only about context.focus.indicators and their values: what they show and how they compare with the astronaut's usual values.
+- The "summary" describes context.focus.status, the state of THAT system: "stable" = it looks fine, "watch" = something in it is worth keeping an eye on, "attention" = it needs attention now. Do not describe the whole body.
+- Findings about indicators outside context.focus.indicators: if the traffic light is red, add one short sentence at the end of "detail" so the astronaut never misses an alert; otherwise do not mention them at all (not in summary, detail or recommendations).
 
+Tone (technical but easy to understand):
+- Speak directly to the astronaut in the second person ("you"), like a trusted flight doctor: warm, calm and precise.
+- "summary": start with the overall state in plain words (e.g. "Your body is stable overall." / "Something is worth keeping an eye on." / "One value needs attention now."), then name the main finding in one short clause.
+- "detail": give the real measured value from context.values with its unit (e.g. "104 bpm", "38.3 °C", "150/95 mmHg") and say how it compares with the astronaut's usual values. If "connections" has a link, explain it in everyday words.
+- Translate deviations into words, never show the σ symbol or numbers in σ: about 2-3σ = "moderately above/below your usual", more than 3σ = "clearly above/below your usual".
+- Keep medical terms but explain each one once in parentheses the first time it appears, e.g. "HRV (heart rate variability)", "SpO2 (oxygen in your blood)", "systolic pressure (the top number)".
+- Never show internal names or field names (traffic_light, detected_by_ml, mode, personal, startup, deviations). If detected_by_ml is true, say that "the system also noticed an unusual pattern compared with your history". If mode starts with "startup", say there are still few days of history, so only medical limits were checked.
+- Recommendations: concrete actions with a time or quantity when it makes sense (e.g. "Rest and repeat the reading in 15 min", "Drink a glass of water").
+- Green and yellow: reassuring, never alarming. Red: direct and calm, and the first recommendation is to contact the mission medical team.
+- Do not name the traffic light color ("green", "yellow", "red") or the analysis mode ("personal history"); describe the state in words instead.
+- Never guess causes that are not in the data (no "mission stress", "fatigue", "recent activity" unless the data says so)."""
 
 class Explainer:
     def __init__(self, settings: Settings | None = None, client=None):
@@ -57,12 +72,12 @@ class Explainer:
             )
         return self._client
 
-    def ask_claude(self, analysis: dict, context: dict, language: str):
+    def ask_claude(self, analysis: dict, context: dict):
         """One call to Claude. Raises on any problem (handled by explain)."""
         response = self.client.messages.parse(
             model=self.settings.model,
             max_tokens=2048,
-            system=SYSTEM_PROMPT.format(language=LANGUAGE_NAMES[language]),
+            system=SYSTEM_PROMPT,
             messages=[{
                 "role": "user",
                 "content": json.dumps(
@@ -79,11 +94,12 @@ class Explainer:
             raise RuntimeError(f"Claude returned no usable explanation ({response.stop_reason})")
         return response
 
-    def explain(self, analysis: dict, context: dict | None = None,
-                language: str | None = None) -> dict:
+    def explain(self, analysis: dict, context: dict | None = None) -> dict:
         context = context or {}
-        language = language if language in LANGUAGE_NAMES else self.settings.language
-        key = cache_key(analysis, context, language)
+        problems = out_of_range(context.get("values"))
+        if problems:  # impossible value: sensor/entry error, not a health finding
+            return measurement_error(problems)
+        key = cache_key(analysis, context)
         reason = None
 
         if not self.settings.enabled:
@@ -93,12 +109,11 @@ class Explainer:
         else:
             started = time.perf_counter()
             try:
-                response = self.ask_claude(analysis, context, language)
+                response = self.ask_claude(analysis, context)
                 result = {
                     **response.parsed_output.model_dump(),
                     "source": "ai",
                     "model": response.model,
-                    "language": language,
                     "latency_s": round(time.perf_counter() - started, 2),
                     "input_tokens": response.usage.input_tokens,
                     "output_tokens": response.usage.output_tokens,
@@ -131,20 +146,20 @@ class Explainer:
             saved = store.get(key)
             if saved:
                 return {**Explanation(**saved).model_dump(), "source": source,
-                        "model": saved.get("model"), "language": language,
+                        "model": saved.get("model"),
                         "fallback_reason": reason}
 
-        text = template_explanation(analysis, context, language)
+        text = template_explanation(analysis, context)
         return {**text.model_dump(), "source": "template", "model": None,
-                "language": language, "fallback_reason": reason}
+                "fallback_reason": reason}
 
 
 _default: Explainer | None = None
 
 
-def explain(analysis: dict, context: dict | None = None, language: str | None = None) -> dict:
+def explain(analysis: dict, context: dict | None = None) -> dict:
     """What FastAPI calls after health_engine.analyze()."""
     global _default
     if _default is None:
         _default = Explainer()
-    return _default.explain(analysis, context, language)
+    return _default.explain(analysis, context)

@@ -65,7 +65,7 @@ SCENARIOS = {
 }
 
 _EXERCISE_WORDS = re.compile(
-    r"exercis|workout|training|physical activity|ejercicio|entrenamiento|actividad f[ií]sica",
+    r"exercis|workout|training|activity|ejercicio|entrenamiento|actividad",
     re.IGNORECASE,
 )
 
