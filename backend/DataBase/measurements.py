@@ -182,6 +182,45 @@ def replace_crew_leader(access_token: str, crew_id: str, new_leader_id: str) -> 
     ).execute()
 
 
+def create_crew(access_token: str, crew_id: str, name: str) -> dict:
+    """Admin only: creates a crew. crew_id is ASTRA- + 1 to 14 capitals or
+    digits, e.g. 'ASTRA-B' (migration 015). The database rejects the call if
+    the token does not belong to an admin."""
+    return (
+        user_client(access_token)
+        .table("crews")
+        .insert({"id": crew_id, "name": name})
+        .execute()
+        .data[0]
+    )
+
+
+def list_crews(access_token: str) -> list[dict]:
+    """One row per crew: leader, members, total and free_slots (out of 4).
+    The admin sees every crew; a crew member only sees their own."""
+    return (
+        user_client(access_token)
+        .table("crew_overview")
+        .select("*")
+        .order("crew_id")
+        .execute()
+        .data
+    )
+
+
+def list_unassigned(access_token: str) -> list[dict]:
+    """ASP / LDR accounts that are not in a crew (to add them to one).
+    The admin sees all of them."""
+    return (
+        user_client(access_token)
+        .table("unassigned_astronauts")
+        .select("*")
+        .order("astronaut_code")
+        .execute()
+        .data
+    )
+
+
 def crew_latest(access_token: str, indicator: str | None = None) -> list[dict]:
     """For each crewmate of the signed-in user: the LATEST value of the
     selected indicator (or of every indicator if None), taken while in this
