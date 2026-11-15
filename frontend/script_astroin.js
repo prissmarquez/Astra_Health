@@ -1,14 +1,11 @@
 const $ = (id) => document.getElementById(id);
 
-// ================= DATA SOURCE (TEAMMATES EDIT HERE) =================
+// DATA SOURCE 
 const REGISTER_API_URL = null;            // e.g. "http://localhost:3000/api"
 const USE_SAMPLE_DATA = true;    // false when the real API works
 const SLOTS = 4;
 
-/**
- * saveMember(slot, { name, id, password, role }) -> { id, name, role }
- * The backend must HASH the password. It must never come back in the response.
- */
+
 async function saveMember(slot, data) {
   if (USE_SAMPLE_DATA || !REGISTER_API_URL) {
     return { id: data.id, name: data.name, role: data.role };   // no password
@@ -22,12 +19,12 @@ async function saveMember(slot, data) {
   return res.json();
 }
 
-// ================= STATE =================
+//  STATE 
 // Only public data is kept here. The password is never stored in the page.
 const members = Array(SLOTS).fill(null);
 let selected = 0;
 
-// ================= SAFE DOM HELPER =================
+// SAFE DOM HELPER 
 function el(tag, props = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(props)) {
@@ -38,7 +35,7 @@ function el(tag, props = {}, children = []) {
   return node;
 }
 
-// ================= RENDER =================
+
 function renderSlots() {
   const box = $("slots");
   box.replaceChildren();
@@ -93,7 +90,7 @@ function renderAll() { renderSlots(); renderForm(); renderSaved(); }
 
 function selectSlot(i) { selected = i; renderAll(); }
 
-// ================= SAVE =================
+//  SAVE 
 $("member-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = $("f-name").value.trim();

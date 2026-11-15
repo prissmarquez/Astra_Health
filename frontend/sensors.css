@@ -1,8 +1,4 @@
-/* ===== Sensors page =====
-   Uses the colors and classes from styles.css
-   (--card, --border, --blue, .card, .header, .nav) */
 
-/* Page layout: header, sensors, nav */
 .sensors-page {
   display: flex;
   flex-direction: column;
@@ -12,7 +8,7 @@
   margin: 0 auto;
 }
 
-/* ===== Title ===== */
+
 .sensors-title {
   display: flex;
   align-items: center;
@@ -38,7 +34,7 @@
   opacity: 0.75;
 }
 
-/* ===== Sensor cards ===== */
+
 .sensors-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -92,7 +88,7 @@
   border-color: var(--green);
 }
 
-/* ===== Connect button ===== */
+
 .sensor-btn {
   margin-top: auto;   /* keeps all buttons aligned at the bottom */
   padding: 8px 20px;
@@ -138,13 +134,13 @@
   }
 }
 
-/* Links in the bottom menu keep the menu colors */
+
 .nav a {
   color: inherit;
   text-decoration: none;
 }
 
-/* ===== Small screens ===== */
+
 @media (max-width: 800px) {
   .sensors-grid {
     grid-template-columns: repeat(2, 1fr);

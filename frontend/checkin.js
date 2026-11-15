@@ -1,14 +1,9 @@
-// ===== ASTRA HEALTH - Check-in page =====
-// Needs (loaded before this file): supabase-js@2 and supabase_client.js
-// (supabaseClient, API_URL, getProfile, loadQueue, saveQueue, updateConnectionStatus...).
+
 
 // Profile of the signed-in user (set on page load). Its id is the owner of new readings.
 let currentProfile = null;
 
-// ===== Measurements =====
-// Values come from the (emulated) Bluetooth LE sensors: see "Sensor transport" below.
-// min / max = physiologically possible values, the same limits as the indicators
-// table (migration 003): the database rejects anything outside them.
+
 const MEASUREMENT_INFO = {
   heart_rate:         { unit: "bpm",   decimals: 0, min: 20, max: 250 },
   hrv:                { unit: "ms",    decimals: 0, min: 1,  max: 300 },
@@ -63,7 +58,7 @@ function checkValues(values) {
   return { values: clean };
 }
 
-// ===== Keep measured values across page changes (e.g. going to panas.html) =====
+
 const MEASURED_KEY = "astra_measured";
 
 function saveMeasured() {
@@ -107,12 +102,7 @@ function showMeasuredStatus(button, text) {
   status.classList.add("done");
 }
 
-// ===== Sensor transport =====
-// Today the sensors are emulated in the Sensors tab (sensors.js), which sends one
-// GATT-formatted packet per "Send reading" click on a BroadcastChannel.
-// Only listenToSensor() knows that:
-// to use real devices, replace its body with Web Bluetooth (see the comment inside);
-// the parsers in ble_codec.js stay the same because both give a DataView.
+
 const BLE_CHANNEL_NAME = "astra_ble";
 const SENSOR_TIMEOUT_MS = 10000;  // wait for the next packet
 const HRV_MIN_RR = 8;             // fewer RR intervals in the packet -> RMSSD is not reliable

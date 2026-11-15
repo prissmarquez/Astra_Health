@@ -1,10 +1,3 @@
-// =====================================================================
-// ASTRA HEALTH - Shared navigation bar (crew + leader pages)
-// Inserts the same <nav> right after the page header and marks the tab of
-// the current page. Include it in <head>, after supabase_client.js:
-//   <script src="nav.js"></script>
-// Not used on admin pages (admi.html, history_admi.html, ast_checkin.html).
-// =====================================================================
 
 const NAV_ITEMS = [
   { label: "Home",     href: "principal_page.html" },

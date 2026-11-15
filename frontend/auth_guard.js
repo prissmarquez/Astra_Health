@@ -1,19 +1,4 @@
-// =====================================================================
-// Session + role guard for private pages.
-// Include it in <head>, AFTER supabase_client.js:
-//   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-//   <script src="supabase_client.js"></script>
-//   <script src="auth_guard.js"></script>
-// Then the page script calls it once and uses the profile it returns:
-//   const profile = await requireRole(["crew", "leader"]);
-//   if (!profile) return;   // already redirecting
-//
-// Wrong role -> ROLE_HOME of that role (crew/leader -> principal_page.html,
-// admin -> admi.html). No session -> index.html.
-//
-// Note: this is only a UX gate. The real security is Supabase RLS and the
-// API token: a user who skips this page still only gets the rows RLS allows.
-// =====================================================================
+
 
 // Hide the page until the role is confirmed, so private content never flashes.
 document.documentElement.style.visibility = "hidden";
