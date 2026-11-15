@@ -160,13 +160,13 @@ body {
 .notificacion {
   grid-area: notificacion;
   border-color: var(--red);
-  background: rgba(80, 15, 30, 0.7);
+  background: rgba(255, 230, 2, 0.7);
   text-align: center;
 }
 
 .atencion {
   grid-area: atencion;
-  border-color: var(--yellow);
+  border-color: var(--red);
 }
 
 .equipo {
@@ -320,13 +320,13 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: rgba(255, 200, 61, 0.15);
+  background: rgba(227, 0, 4, 0.15);
   border-radius: 10px;
   padding: 10px 14px;
 }
 
 .alerta-fila strong {
-  color: var(--yellow);
+  color: var(--red);
 }
 
 .termo {
