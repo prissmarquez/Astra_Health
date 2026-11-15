@@ -5,8 +5,6 @@ const SUPABASE_URL = "https://oswgtubikjlzavaxliuv.supabase.co";   // same as SU
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_2bsjmdVdRpEanb76wEdzcg_cd5NHr1J";    // same as in .env
 const API_URL = "http://127.0.0.1:8000";                   // our FastAPI server
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
 // Page each role lands on after logging in.
 // Change admin's page when the admin view exists.
 const ROLE_HOME = {
@@ -19,6 +17,60 @@ const ROLE_HOME = {
 const PROFILE_KEY = "astra_profile";  // last profile, used when there is no network
 // Check-in draft saved by checkin.js / panas.js (cleared on logout)
 const CHECKIN_DRAFT_KEYS = ["astra_measured", "astra_checkin_form", "panasResult"];
+// Readings waiting for POST /sync. Each one has owner_id = the profile id that took it.
+// Medical data: never cleared on logout.
+const QUEUE_KEY = "astra_offline_queue";
+
+function loadQueue() {
+  try {
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY));
+    return Array.isArray(queue) ? queue : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveQueue(queue) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+}
+
+// Pending readings of the current user (uses the saved profile, so it works offline)
+function countPendingReadings() {
+  const profile = getCachedProfile();
+  if (!profile) return 0;
+  return loadQueue().filter(function (reading) {
+    return reading && reading.owner_id === profile.id;
+  }).length;
+}
+
+// ===== "Connected" indicator in the header =====
+// Shows "Connected" / "Offline" and the user's pending readings, e.g. "Offline · 2 pending".
+// Does nothing on pages without .conectado.
+function updateConnectionStatus() {
+  const indicators = document.querySelectorAll(".conectado");
+  if (indicators.length === 0) return;
+
+  const online = navigator.onLine;
+  const pending = countPendingReadings();
+  let text = online ? "Connected" : "Offline";
+  if (pending > 0) text += " · " + pending + " pending";
+
+  indicators.forEach(function (indicator) {
+    const dot = document.createElement("span");
+    dot.className = "punto";
+    indicator.textContent = "";
+    indicator.append(dot, " " + text);
+    indicator.classList.toggle("offline", !online);
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", updateConnectionStatus);
+} else {
+  updateConnectionStatus();
+}
+window.addEventListener("online", updateConnectionStatus);
+window.addEventListener("offline", updateConnectionStatus);
 
 // Service worker: caches the pages so the app opens without internet.
 // Every page loads this file, so registering here is enough.
@@ -53,6 +105,9 @@ function isNetworkError(error) {
   const message = String((error && error.message) || error || "");
   return /failed to fetch|network|load failed/i.test(message);
 }
+
+// Created after the offline helpers, so the indicator still works if the library failed to load
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 // Returns the signed-in user's profile ({ id, name, role, crew_id, astronaut_code }) or null.
 // Without network it returns the last saved profile instead.
@@ -108,6 +163,7 @@ async function logout() {
     Object.keys(localStorage).forEach(function (key) {
       if (/^sb-.*-auth-token/.test(key)) localStorage.removeItem(key);
     });
+    // The offline queue (QUEUE_KEY) is kept on purpose: it is uploaded when its owner logs in again
     localStorage.removeItem(PROFILE_KEY);
     CHECKIN_DRAFT_KEYS.forEach(function (key) { sessionStorage.removeItem(key); });
   } catch (error) {
