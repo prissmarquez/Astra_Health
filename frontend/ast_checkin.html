@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astra Health - Register crew</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admi_register.css">
+
+  <style>
+    .reg-page { max-width: 1200px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .reg-page .header, .reg-page .nav { grid-area: auto; }
+    .reg-page .nav a { color: #e8eefc; text-decoration: none; }
+    .reg-page .nav a.activo { color: #7aa2ff; }
+
+    .members-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .title { margin: 0; font-size: 24px; }
+    .slots { display: flex; gap: 10px; margin-left: auto; }
+    .slot {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: transparent; color: #e8eefc;
+      border: 2px solid #2a4d99;
+      font-size: 16px; font-weight: bold; cursor: pointer;
+    }
+    .slot:hover { border-color: #7aa2ff; }
+    .slot.filled { background: rgba(46, 229, 157, 0.2); border-color: #2ee59d; }
+    .slot.active { border-color: #fff; box-shadow: 0 0 10px rgba(122, 162, 255, .8); }
+
+    .member-form { display: grid; grid-template-columns: 140px minmax(0, 360px); gap: 14px 18px; align-items: center; }
+    .member-form label { font-size: 16px; }
+    .field {
+      background: rgba(20, 40, 90, 0.6); color: #e8eefc;
+      border: 1px solid #7aa2ff; border-radius: 10px;
+      padding: 10px 12px; font-size: 14px; color-scheme: dark;
+    }
+    .form-msg { grid-column: 1 / -1; margin: 0; min-height: 18px; font-size: 13px; }
+    .form-msg.error { color: #ff5d6c; }
+    .form-msg.ok { color: #2ee59d; }
+    .save-btn { grid-column: 1 / -1; justify-self: end; }
+
+    .saved-list { display: grid; gap: 12px; }
+    .member-card {
+      display: flex; align-items: center; gap: 16px; padding: 14px 16px;
+      background: rgba(20, 40, 90, 0.5); border: 1px solid #2a4d99;
+      border-radius: 14px; cursor: pointer;
+    }
+    .member-card .avatar { width: 56px; height: 56px; font-size: 20px; flex-shrink: 0; }
+    .member-card .info { display: grid; gap: 2px; font-size: 14px; }
+    .empty { opacity: .6; font-size: 13px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="reg-page">
+
+    <!-- HEADER -->
+    <header class="card header">
+      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+      <div class="usuario">
+        <strong id="user-name">Admin name</strong>
+        <small id="user-role">Administrator</small>
+      </div>
+      <div class="conectado"><span class="punto"></span> Connected</div>
+    </header>
+
+    <!-- MEMBERS + FORM -->
+    <section class="card">
+      <div class="members-head">
+        <h2 class="title">Members</h2>
+        <div class="slots" id="slots">
+          <button type="button" class="slot active">1</button>
+          <button type="button" class="slot">2</button>
+          <button type="button" class="slot">3</button>
+          <button type="button" class="slot">4</button>
+        </div>
+      </div>
+
+      <form id="member-form" class="member-form" autocomplete="off">
+        <label for="f-name">Name</label>
+        <input id="f-name" class="field" type="text" placeholder="Type here" maxlength="60" required>
+
+        <label for="f-id">ID</label>
+        <input id="f-id" class="field" type="text" placeholder="Type here" maxlength="20" required>
+
+        <label for="f-pass">Password</label>
+        <input id="f-pass" class="field" type="password" placeholder="Type here" maxlength="100" autocomplete="new-password">
+
+        <label for="f-role">Role</label>
+        <select id="f-role" class="field" required>
+          <option value="">Select a role</option>
+          <option>Commander</option>
+          <option>Pilot</option>
+          <option>Flight engineer</option>
+          <option>Mission doctor</option>
+        </select>
+
+        <p class="form-msg" id="form-msg" role="status"></p>
+        <button type="submit" class="btn-principal save-btn">Save info</button>
+      </form>
+    </section>
+
+    <!-- SAVED MEMBERS: shows the info of the selected circle -->
+    <section class="card">
+      <h3>Registered members</h3>
+      <div class="saved-list" id="saved-list">
+        <p class="empty">No members registered yet</p>
+      </div>
+    </section>
+
+    <!-- NAVIGATION -->
+    <nav class="card nav">
+      <a href="admi.html">Home</a>
+      <a href="history_admi.html">History</a>
+      <a class="activo" href="admi_register.html">Register</a>
+      <a>Settings</a>
+    </nav>
+
+  </div>
+
+  <script src="script_register.js"></script>
+</body>
+</html>
