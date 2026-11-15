@@ -9,14 +9,14 @@ import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, field_validator
 
 # ml/ and DataBase/ are plain script folders, so we add them to the import path
 BACKEND = Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND / "ml"))
 sys.path.insert(0, str(BACKEND / "DataBase"))
 
-from connection import public_client, service_client, user_client  # noqa: E402
+from connection import admin_client, public_client, service_client, user_client  # noqa: E402
 from health_engine import IND, WINDOW, analyze  # noqa: E402
 from measurements import list_daily_readings, save_measurements  # noqa: E402
 
@@ -122,6 +122,38 @@ class SyncItem(BaseModel):
     new_measurements: int = 0  # 0 when the reading had already been uploaded
     analysis: AnalysisResult | None = None
     error: str | None = None  # the front-end keeps this reading pending
+
+
+
+class NewUser(BaseModel):
+    """POST /admin/users: a new account created by a ground admin."""
+
+    code: str = Field(..., pattern=r"^(ASP|LDR|ADM)-[0-9]{4}$", examples=["ASP-1004"])
+    name: str = Field(..., min_length=1, max_length=120, examples=["Astronaut 1004"])
+    password: str = Field(..., min_length=8, max_length=72)
+    role: Literal["crew", "leader", "admin"]  # values of the user_role enum (001 + 006)
+    crew_id: str | None = Field(None, pattern=r"^[A-Z0-9][A-Z0-9-]{1,19}$", examples=["ASTRA-A"])
+
+    @field_validator("code", "crew_id", mode="before")
+    @classmethod
+    def normalize_code(cls, value):
+        if isinstance(value, str):
+            value = value.strip().upper()
+            return value or None
+        return value
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class CreatedUser(BaseModel):
+    id: str
+    name: str
+    astronaut_code: str
+    role: str
+    crew_id: str | None = None
 
 
 # ---------- Helpers ------------------------------------------------------------
@@ -363,3 +395,114 @@ def sync(
             detail = error.detail if isinstance(error, HTTPException) else str(error)
             results.append(SyncItem(id=reading.id, ok=False, error=detail))
     return results
+
+
+# ---------- Admin: create accounts -----------------------------------------------
+
+# The code decides the role (migration 012): ASP crew, LDR leader, ADM admin.
+ROLE_PREFIX = {"crew": "ASP", "leader": "LDR", "admin": "ADM"}
+# Technical login email: the DB trigger create_profile() reads the code from it
+# (migrations 011 + 012) and the login page builds the same email (script_login.js).
+LOGIN_EMAIL_DOMAIN = "crew.astra-health.test"
+CREW_MAX_MEMBERS = 4  # migration 007
+
+
+def require_admin(token):
+    """403 unless the token belongs to an admin (profiles.role, same as is_admin() in RLS)."""
+    user_id = get_user_id(token)
+    rows = (
+        user_client(token).table("profiles").select("role").eq("id", user_id).execute().data
+    )
+    if not rows or rows[0]["role"] != "admin":
+        raise HTTPException(403, "Only a ground admin can create accounts")
+    return user_id
+
+
+def error_text(error):
+    """Readable message from Supabase Auth / PostgREST errors."""
+    return getattr(error, "message", None) or str(error)
+
+
+@app.post("/admin/users", response_model=CreatedUser, status_code=201)
+def create_account(
+    new: NewUser, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
+):
+    """Creates a Supabase Auth account + its profile. Admins only.
+
+    The profile row is created by the create_profile() trigger from the technical
+    email (code and role); this endpoint then sets the name and the crew.
+    The database triggers enforce the same crew rules again (4 members, one leader).
+    """
+    token = require_token(credentials)
+    require_admin(token)
+
+    if not new.code.startswith(ROLE_PREFIX[new.role] + "-"):
+        raise HTTPException(
+            400, "The ID must match the role: crew -> ASP-0000, leader -> LDR-0000, admin -> ADM-0000"
+        )
+    if new.role == "admin" and new.crew_id:
+        raise HTTPException(400, "Ground admins cannot belong to a crew")
+
+    try:
+        db = admin_client()
+    except RuntimeError as error:
+        raise HTTPException(503, "Server is missing SUPABASE_SECRET_KEY") from error
+
+    if db.table("profiles").select("id").eq("astronaut_code", new.code).execute().data:
+        raise HTTPException(409, f"{new.code} already exists")
+
+    if new.crew_id:
+        if not db.table("crews").select("id").eq("id", new.crew_id).execute().data:
+            raise HTTPException(400, f"Crew {new.crew_id} does not exist")
+        members = db.table("profiles").select("role").eq("crew_id", new.crew_id).execute().data
+        has_leader = any(m["role"] == "leader" for m in members)
+        if len(members) >= CREW_MAX_MEMBERS:
+            raise HTTPException(409, f"Crew {new.crew_id} is full ({CREW_MAX_MEMBERS} members)")
+        if new.role == "leader" and has_leader:
+            raise HTTPException(409, f"Crew {new.crew_id} already has a leader")
+        if new.role == "crew" and not has_leader:
+            raise HTTPException(409, f"Crew {new.crew_id} has no leader yet: create its LDR first")
+
+    # 1) Auth account (the trigger creates the profile with code + role)
+    try:
+        created = db.auth.admin.create_user(
+            {
+                "email": f"{new.code.lower()}@{LOGIN_EMAIL_DOMAIN}",
+                "password": new.password,
+                "email_confirm": True,
+                "user_metadata": {"name": new.name},
+                "app_metadata": {"role": new.role},  # ADM accounts require role = admin
+            }
+        )
+    except Exception as error:
+        text = error_text(error)
+        status = 409 if "already" in text.lower() else 400
+        raise HTTPException(status, f"Could not create the account: {text}") from error
+
+    user_id = created.user.id
+
+    # 2) Name + crew on the profile; undo the account if anything fails
+    try:
+        changes = {"name": new.name}
+        if new.crew_id:
+            changes["crew_id"] = new.crew_id
+        db.table("profiles").update(changes).eq("id", user_id).execute()
+        profile = (
+            db.table("profiles")
+            .select("id, name, astronaut_code, role, crew_id")
+            .eq("id", user_id)
+            .single()
+            .execute()
+            .data
+        )
+        if profile["astronaut_code"] != new.code or profile["role"] != new.role:
+            raise RuntimeError("the profile did not get the expected code and role")
+    except Exception as error:
+        try:
+            db.auth.admin.delete_user(user_id)
+        except Exception:
+            pass  # reported below; the admin can retry with the same code once removed
+        raise HTTPException(400, f"Could not save the profile: {error_text(error)}") from error
+
+    return CreatedUser(**profile)
+

@@ -139,3 +139,46 @@
     width: 100%;
   }
 }
+/* CREATE PROFILE FORM (same field look as ast_checkin.html) */
+
+.create-user-form {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 360px);
+  gap: 12px 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.create-user-form .field {
+  background: rgba(20, 40, 90, 0.6);
+  color: var(--text);
+  border: 1px solid var(--blue);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color-scheme: dark;
+}
+
+.create-user-form .field:disabled {
+  opacity: 0.5;
+}
+
+.form-msg {
+  grid-column: 1 / -1;
+  margin: 0;
+  min-height: 18px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.form-msg.error { color: var(--red); }
+.form-msg.ok { color: var(--green); }
+
+.create-user-btn {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+@media (max-width: 600px) {
+  .create-user-form { grid-template-columns: minmax(0, 1fr); }
+}

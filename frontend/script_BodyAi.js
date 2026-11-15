@@ -50,10 +50,10 @@ async function generateImage(prompt) {
 // ================= SYSTEMS =================
 const SYSTEMS = {
   cardio: "Cardiovascular system",
-  resp:   "Respiratory system",
+  resp: "Respiratory system",
   digest: "Digestive system",
   muscle: "Muscular system",
-  nerv:   "Nervous system",
+  nerv: "Nervous system",
   immune: "Immune system",
   thermo: "Thermoregulation",
 };
@@ -72,8 +72,8 @@ function sampleAnalysis(system) {
 
 // ================= SAFE HELPERS =================
 const STATUS = {
-  stable:    "Stable",
-  watch:     "Under observation",
+  stable: "Stable",
+  watch: "Under observation",
   attention: "Needs attention",
 };
 const SVG_NS = "http://www.w3.org/2000/svg";

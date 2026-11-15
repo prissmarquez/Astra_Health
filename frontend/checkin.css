@@ -50,14 +50,30 @@
   gap: 12px;
 }
 
-.hr-box       { grid-area: hr; }
-.hrv-box      { grid-area: hrv; }
-.exercise-box { grid-area: exercise; }
-.sleep-box    { grid-area: sleep; }
-.spo2-box     { grid-area: spo2; }
-.temp-box     { grid-area: temp; }
-.bp-box       { grid-area: bp; }
-.glucose-box  { grid-area: glucose; }
+.hr-box {
+  grid-area: hr;
+}
+.hrv-box {
+  grid-area: hrv;
+}
+.exercise-box {
+  grid-area: exercise;
+}
+.sleep-box {
+  grid-area: sleep;
+}
+.spo2-box {
+  grid-area: spo2;
+}
+.temp-box {
+  grid-area: temp;
+}
+.bp-box {
+  grid-area: bp;
+}
+.glucose-box {
+  grid-area: glucose;
+}
 
 /* Inner boxes share the same look */
 .measure-box,
@@ -87,9 +103,15 @@
   border: 2px solid currentColor;
 }
 
-.icon-red    { color: var(--red); }
-.icon-blue   { color: #4cc9ff; }
-.icon-purple { color: #8a7dff; }
+.icon-red {
+  color: var(--red);
+}
+.icon-blue {
+  color: #4cc9ff;
+}
+.icon-purple {
+  color: #8a7dff;
+}
 
 .measure-info {
   display: flex;
@@ -321,7 +343,6 @@
   .finish-btn {
     padding: 14px;
   }
-
 }
 
 @media (max-width: 480px) {

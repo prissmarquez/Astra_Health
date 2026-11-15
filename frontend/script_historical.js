@@ -72,7 +72,7 @@ async function fetchDaily(astronautId, days) {
     .from("daily_readings")
     .select("day, heart_rate, spo2, systolic_pressure, diastolic_pressure, glucose, temperature, adaptation")
     .eq("astronaut_id", astronautId)
-    .gte("day", sinceDate(days).toISOString().slice(0, 10))
+    .gte("day", utcDay(sinceDate(days)))
     .order("day", { ascending: true });
   if (error) throw new Error(error.message);
   return data;
@@ -84,7 +84,7 @@ async function fetchRecords(astronautId, indicator, days) {
   const codes = cfg.extraColumn ? [cfg.column, cfg.extraColumn] : [cfg.column];
   const { data, error } = await supabaseClient
     .from("readings_detailed")
-    .select("taken_date, taken_time, indicator_name, value, unit, source, sensor_name, context")
+    .select("taken_at, indicator_name, value, unit, source, sensor_name, context")
     .eq("astronaut_id", astronautId)
     .eq("status", "taken")
     .in("indicator", codes)
@@ -101,7 +101,7 @@ async function fetchAnalyses(astronautId, days) {
     .from("health_analyses")
     .select("day, traffic_light, clinical_reasons, deviations, detected_by_ml, analyzed_at")
     .eq("astronaut_id", astronautId)
-    .gte("day", sinceDate(days).toISOString().slice(0, 10))
+    .gte("day", utcDay(sinceDate(days)))
     .order("analyzed_at", { ascending: false });
   if (error) throw new Error(error.message);
   const byDay = {};
@@ -254,7 +254,7 @@ function showStatus(rows) {
 
   rows.forEach((r) => {
     const tr = makeEl("tr");
-    tr.appendChild(makeEl("td", "", r.day));
+    tr.appendChild(makeEl("td", "", formatDay(r.day)));  // UTC day of the analysis
 
     const statusTd = makeEl("td");
     if (r.light) {
@@ -357,13 +357,13 @@ function buildChart(indicator, daily) {
     range: cfg.range,
     points: daily
       .filter((d) => d[cfg.column] != null)
-      .map((d) => ({ label: d.day.slice(5), value: round1(d[cfg.column]) })),
+      .map((d) => ({ label: formatDay(d.day, { month: "short", day: "numeric" }), value: round1(d[cfg.column]) })),
   };
 }
 
 function buildRecords(rows) {
   return rows.map((r) => ({
-    datetime: `${r.taken_date} · ${r.taken_time}`,
+    datetime: formatLocalDateTime(r.taken_at),
     indicator: r.indicator_name,
     value: `${round1(r.value)} ${r.unit}`,
     source: ["manual", "questionnaire"].includes(r.source) ? "manual" : "sensor",

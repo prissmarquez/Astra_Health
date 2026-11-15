@@ -173,6 +173,42 @@ async function logout() {
   window.location.href = "index.html";
 }
 
+// ===== Dates =====
+// The database stores timestamps in UTC (timestamptz). The UI shows them in the
+// browser's local time zone. Never cut ISO strings by hand: use these helpers.
+
+// "2026-11-15T06:30:00Z" -> "Nov 15, 2026, 12:30 AM" (local time, browser locale)
+function formatLocalDateTime(iso) {
+  const date = new Date(iso);
+  if (!iso || Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+// Time only, e.g. "09:36" (local time)
+function formatLocalTime(iso) {
+  const date = new Date(iso);
+  if (!iso || Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+// Calendar days stored as `date` (daily_readings.day, health_analyses.day) are UTC
+// days with no time: they are formatted in UTC so they never move to the day before.
+// options: Intl.DateTimeFormat options, e.g. { month: "short", day: "numeric" }
+function formatDay(day, options) {
+  const date = new Date(day + "T00:00:00Z");
+  if (!day || Number.isNaN(date.getTime())) return "--";
+  // dateStyle cannot be combined with month/day options, so it is only the default
+  const opts = Object.assign({}, options || { dateStyle: "medium" }, { timeZone: "UTC" });
+  return new Intl.DateTimeFormat(undefined, opts).format(date);
+}
+
+// Date -> "YYYY-MM-DD" of that instant in UTC, for filtering `date` columns
+function utcDay(date) {
+  return date.getUTCFullYear() + "-" +
+    String(date.getUTCMonth() + 1).padStart(2, "0") + "-" +
+    String(date.getUTCDate()).padStart(2, "0");
+}
+
 // Shows the astronaut's name and "code · role" in the page header.
 // Pages use two id styles (nombre-usuario / user-name); both are supported.
 function fillUserHeader(profile) {

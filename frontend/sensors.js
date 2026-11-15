@@ -17,13 +17,13 @@ const RR_PER_PACKET = 9;
 // Simulated ranges (inside the green zone of backend/ml/health_engine.py).
 // Glucose: NASA Inspiration4 pre-flight values.
 const SIMULATED_RANGES = {
-  heart_rate:         { min: 55,   max: 80 },
-  hrv:                { min: 35,   max: 75 },   // target RMSSD of the RR intervals (ms)
-  spo2:               { min: 96,   max: 99 },
-  temperature:        { min: 36.5, max: 37.2 },
-  systolic_pressure:  { min: 105,  max: 125 },
-  diastolic_pressure: { min: 65,   max: 80 },
-  glucose:            { min: 71,   max: 90 }
+  heart_rate: { min: 55, max: 80 },
+  hrv: { min: 35, max: 75 },   // target RMSSD of the RR intervals (ms)
+  spo2: { min: 96, max: 99 },
+  temperature: { min: 36.5, max: 37.2 },
+  systolic_pressure: { min: 105, max: 125 },
+  diastolic_pressure: { min: 65, max: 80 },
+  glucose: { min: 71, max: 90 }
 };
 
 const bleChannel = "BroadcastChannel" in window ? new BroadcastChannel(BLE_CHANNEL_NAME) : null;
@@ -205,7 +205,7 @@ function sendReading(button) {
 
     card.classList.add("connected");
     status.textContent = packet.text + " · sent " +
-      sentAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      formatLocalTime(sentAt);
     showToast(card, "Reading sent ✓", false);
   } catch (error) {
     console.error("Reading not sent:", error);

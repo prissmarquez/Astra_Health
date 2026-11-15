@@ -200,10 +200,7 @@ body {
   height: 120px;
   border-radius: 50%;
 
-  background: conic-gradient(
-    var(--green) var(--pct, 0%),
-    #1a2a50 0
-  );
+  background: conic-gradient(var(--green) var(--pct, 0%), #1a2a50 0);
 
   display: grid;
   place-items: center;
