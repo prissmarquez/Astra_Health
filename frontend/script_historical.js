@@ -6,7 +6,7 @@
 const $ = (id) => document.getElementById(id);
 
 // ================= DATA SOURCE (TEAMMATES EDIT HERE) =================
-const API_URL = null;            // e.g. "http://localhost:3000/api/history"
+const HISTORY_API_URL = null;            // e.g. "http://localhost:3000/api/history"
 const USE_SAMPLE_DATA = true;    // set to false when the real API works
 
 /**
@@ -22,9 +22,9 @@ const USE_SAMPLE_DATA = true;    // set to false when the real API works
  * days: 7 | 14 | 30
  */
 async function getHistoryData(indicator, days) {
-  if (USE_SAMPLE_DATA || !API_URL) return buildSampleData(indicator, days);
+  if (USE_SAMPLE_DATA || !HISTORY_API_URL) return buildSampleData(indicator, days);
 
-  const res = await fetch(`${API_URL}?indicator=${indicator}&days=${days}`);
+  const res = await fetch(`${HISTORY_API_URL}?indicator=${indicator}&days=${days}`);
   if (!res.ok) throw new Error("Status " + res.status);
   return res.json();
 }

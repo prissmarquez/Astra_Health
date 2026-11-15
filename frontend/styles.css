@@ -123,6 +123,10 @@ body {
   border-radius: 50%;
 }
 
+.conectado.offline .punto {
+  background: var(--red);
+}
+
 /* BARRAS DE PROGRESO */
 
 .barra {

@@ -1,8 +1,9 @@
 // ===== ASTRA HEALTH - Check-in page =====
 // Needs (loaded before this file): supabase-js@2 and supabase_client.js
-// (supabaseClient, API_URL, getProfile, getAccessToken).
+// (supabaseClient, API_URL, getProfile, loadQueue, saveQueue, updateConnectionStatus...).
 
-const QUEUE_KEY = "astra_offline_queue";
+// Profile of the signed-in user (set on page load). Its id is the owner of new readings.
+let currentProfile = null;
 
 // ===== Simulated sensors =====
 // There is no real sensor yet, so each "Measure" generates a random value.
@@ -36,15 +37,72 @@ function simulateField(field) {
   return measured[field];
 }
 
-// Fills `measured` for one button and returns the text to show, e.g. "68 bpm"
-function simulateSensor(sensor) {
+// Text for one button from `measured`, e.g. "68 bpm" or "115/75 mmHg".
+// Returns null if that sensor has not been measured yet.
+function formatSensor(sensor) {
   if (sensor === "blood_pressure") {
-    const systolic = simulateField("systolic_pressure");
-    const diastolic = simulateField("diastolic_pressure");
+    const systolic = measured.systolic_pressure;
+    const diastolic = measured.diastolic_pressure;
+    if (typeof systolic !== "number" || typeof diastolic !== "number") return null;
     return systolic + "/" + diastolic + " mmHg";
   }
-  const value = simulateField(sensor);
-  return value + " " + SIMULATED_RANGES[sensor].unit;
+  if (typeof measured[sensor] !== "number" || !SIMULATED_RANGES[sensor]) return null;
+  return measured[sensor] + " " + SIMULATED_RANGES[sensor].unit;
+}
+
+// Fills `measured` for one button and returns the text to show
+function simulateSensor(sensor) {
+  if (sensor === "blood_pressure") {
+    simulateField("systolic_pressure");
+    simulateField("diastolic_pressure");
+  } else {
+    simulateField(sensor);
+  }
+  return formatSensor(sensor);
+}
+
+// ===== Keep measured values across page changes (e.g. going to panas.html) =====
+const MEASURED_KEY = "astra_measured";
+
+function saveMeasured() {
+  try {
+    sessionStorage.setItem(MEASURED_KEY, JSON.stringify(measured));
+  } catch (error) {
+    // Storage blocked: values only live on this page
+  }
+}
+
+function clearMeasured() {
+  try {
+    sessionStorage.removeItem(MEASURED_KEY);
+  } catch (error) {
+    // Nothing to clear
+  }
+}
+
+// Loads saved values into `measured` (only known fields with valid numbers)
+function loadMeasured() {
+  let saved = null;
+  try {
+    saved = JSON.parse(sessionStorage.getItem(MEASURED_KEY));
+  } catch (error) {
+    return;
+  }
+  if (!saved || typeof saved !== "object") return;
+
+  REQUIRED_MEASUREMENTS.forEach(function (field) {
+    if (typeof saved[field] === "number" && Number.isFinite(saved[field])) {
+      measured[field] = saved[field];
+    }
+  });
+}
+
+function showMeasuredStatus(button, text) {
+  const status = button.parentElement.querySelector(".measure-status");
+  button.disabled = false;
+  button.textContent = "Measure again";
+  status.textContent = text + " ✓ (simulated)";
+  status.classList.add("done");
 }
 
 // ===== Measurement buttons =====
@@ -64,13 +122,19 @@ measureButtons.forEach(function (button) {
     // Wait 5 seconds (5000 ms)
     setTimeout(function () {
       const text = simulateSensor(button.dataset.sensor);
-
-      button.disabled = false;
-      button.textContent = "Measure again";
-      status.textContent = text + " ✓ (simulated)";
-      status.classList.add("done");
+      saveMeasured();
+      showMeasuredStatus(button, text);
     }, 5000);
   });
+});
+
+// Restore values measured before leaving the page
+loadMeasured();
+measureButtons.forEach(function (button) {
+  const text = formatSensor(button.dataset.sensor);
+  if (text) {
+    showMeasuredStatus(button, text);
+  }
 });
 
 // ===== PANAS card =====
@@ -106,6 +170,62 @@ function showPanasState() {
 }
 
 showPanasState();
+
+// ===== Keep exercise + sleep answers across page changes =====
+const FORM_KEY = "astra_checkin_form";
+const SLEEP_FIELDS = ["sleepHours", "sleepMinutes", "sleepNotes"];
+const exerciseRadios = document.querySelectorAll('input[name="exercise"]');
+
+function saveForm() {
+  const exercise = document.querySelector('input[name="exercise"]:checked');
+  const form = { exercise: exercise ? exercise.value : null };
+  SLEEP_FIELDS.forEach(function (id) {
+    form[id] = document.getElementById(id).value;
+  });
+  try {
+    sessionStorage.setItem(FORM_KEY, JSON.stringify(form));
+  } catch (error) {
+    // Storage blocked: answers only live on this page
+  }
+}
+
+function clearForm() {
+  try {
+    sessionStorage.removeItem(FORM_KEY);
+  } catch (error) {
+    // Nothing to clear
+  }
+}
+
+// Fills the inputs with the saved answers (values only, never HTML)
+function restoreForm() {
+  let form = null;
+  try {
+    form = JSON.parse(sessionStorage.getItem(FORM_KEY));
+  } catch (error) {
+    return;
+  }
+  if (!form || typeof form !== "object") return;
+
+  if (form.exercise === "yes" || form.exercise === "no") {
+    exerciseRadios.forEach(function (radio) {
+      radio.checked = radio.value === form.exercise;
+    });
+  }
+  SLEEP_FIELDS.forEach(function (id) {
+    if (typeof form[id] === "string") {
+      document.getElementById(id).value = form[id];
+    }
+  });
+}
+
+restoreForm();
+exerciseRadios.forEach(function (radio) {
+  radio.addEventListener("change", saveForm);
+});
+SLEEP_FIELDS.forEach(function (id) {
+  document.getElementById(id).addEventListener("input", saveForm);
+});
 
 // ===== Sleep: convert hours + minutes to sleep_min =====
 // Returns null if both fields are empty.
@@ -172,14 +292,16 @@ function validateCheckin() {
   return null;
 }
 
-// ===== Reading sent to POST /sync =====
-// EXACTLY the field names of OfflineReading in backend/main.py.
+// ===== Reading saved in the queue =====
+// EXACTLY the field names of OfflineReading in backend/main.py, plus owner_id
+// (only used on this device; it is removed before sending, the server uses the token).
 // sleepNotes is not sent: /sync has no field for it.
-function buildReading() {
+function buildReading(ownerId) {
   const exercise = document.querySelector('input[name="exercise"]:checked');
   const panasResult = getPanasResult();
 
   return {
+    owner_id: ownerId,
     id: newUuid(),
     taken_at: new Date().toISOString(),
     heart_rate: measured.heart_rate,
@@ -197,24 +319,19 @@ function buildReading() {
   };
 }
 
-// ===== Offline queue (localStorage) =====
-function loadQueue() {
-  try {
-    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY));
-    return Array.isArray(queue) ? queue : [];
-  } catch (error) {
-    return [];
-  }
-}
-
-function saveQueue(queue) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-}
-
+// ===== Offline queue (loadQueue / saveQueue live in supabase_client.js) =====
 function addToQueue(reading) {
   const queue = loadQueue();
   queue.push(reading);
   saveQueue(queue);
+  updateConnectionStatus();
+}
+
+// Copy of a reading without owner_id, ready for POST /sync
+function toSyncPayload(reading) {
+  const payload = Object.assign({}, reading);
+  delete payload.owner_id;
+  return payload;
 }
 
 // ===== Preliminary traffic light =====
@@ -323,29 +440,41 @@ function showTrafficLight(title, analysis, note) {
 }
 
 // ===== Sync with the backend =====
-// Sends the whole queue to POST /sync and removes only the ids that came back ok.
+// Sends ONLY the signed-in user's readings to POST /sync and removes the ids that came back ok.
+// Other users' readings and old readings without owner_id stay in the queue untouched.
+// The server decides the owner from the token, never from owner_id.
 // Returns the server results, or throws if the request failed (queue untouched).
 let syncing = false;
 
 async function syncQueue() {
   if (syncing) return null;
-  const queue = loadQueue();
-  if (queue.length === 0) return [];
+  if (loadQueue().length === 0) return [];
 
   syncing = true;
   try {
-    const token = await getAccessToken();
-    if (!token) {
+    // Same user as the token we send
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
       throw new Error("Session expired, please log in again.");
     }
+    const userId = session.user.id;
+
+    const queue = loadQueue();
+    const withoutOwner = queue.filter(function (reading) { return !reading.owner_id; });
+    if (withoutOwner.length > 0) {
+      console.warn(withoutOwner.length + " queued reading(s) have no owner_id; " +
+                   "they are kept in the queue and not uploaded.");
+    }
+    const mine = queue.filter(function (reading) { return reading.owner_id === userId; });
+    if (mine.length === 0) return [];
 
     const response = await fetch(API_URL + "/sync", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
+        "Authorization": "Bearer " + session.access_token
       },
-      body: JSON.stringify(queue)
+      body: JSON.stringify(mine.map(toSyncPayload))
     });
 
     if (!response.ok) {
@@ -358,14 +487,16 @@ async function syncQueue() {
              .map(function (item) { return String(item.id).toLowerCase(); })
     );
 
-    // Reload the queue: a reading may have been added while waiting
+    // Reload the queue: a reading may have been added while waiting.
+    // Only this user's uploaded readings are removed.
     const remaining = loadQueue().filter(function (reading) {
-      return !okIds.has(String(reading.id).toLowerCase());
+      return !(reading.owner_id === userId && okIds.has(String(reading.id).toLowerCase()));
     });
     saveQueue(remaining);
     return results;
   } finally {
     syncing = false;
+    updateConnectionStatus();
   }
 }
 
@@ -376,7 +507,7 @@ async function retrySync() {
     const results = await syncQueue();
     if (!results) return;
     const uploaded = results.filter(function (item) { return item.ok; }).length;
-    const pending = loadQueue().length;
+    const pending = countPendingReadings();
     if (uploaded > 0 && finishMessage.textContent === "") {
       showFinishInfo("Uploaded " + uploaded + " pending reading(s)." +
                      (pending > 0 ? " " + pending + " still pending." : ""));
@@ -397,10 +528,17 @@ finishBtn.addEventListener("click", async function () {
     return;
   }
 
-  const reading = buildReading();
+  if (!currentProfile) {
+    showFinishError("Your profile is still loading. Please try again in a moment.");
+    return;
+  }
+
+  const reading = buildReading(currentProfile.id);
 
   // 1) Save first, so nothing is lost if the network fails
   addToQueue(reading);
+  clearMeasured(); // the reading is safe in the queue: next check-in starts fresh
+  clearForm();
 
   // 2) Preliminary traffic light computed on the device
   showTrafficLight("Preliminary result", clinicalPreview(reading),
@@ -419,7 +557,7 @@ finishBtn.addEventListener("click", async function () {
     });
 
     if (mine && mine.ok && mine.analysis) {
-      const pending = loadQueue().length;
+      const pending = countPendingReadings();
       showTrafficLight("Result", mine.analysis,
                        pending > 0 ? pending + " older reading(s) still pending." : "Mission log saved.");
     } else if (mine && !mine.ok) {
@@ -440,6 +578,8 @@ finishBtn.addEventListener("click", async function () {
   }
 });
 
+connectLogoutButton();  // from supabase_client.js
+
 // ===== On page load =====
 // Only signed-in users can check in; then retry any pending readings.
 (async function init() {
@@ -448,6 +588,8 @@ finishBtn.addEventListener("click", async function () {
     window.location.href = "index.html";
     return;
   }
+  currentProfile = profile;
+  updateConnectionStatus();  // the saved profile may have just changed
 
   document.getElementById("nombre-usuario").textContent =
     profile.name || profile.astronaut_code || "Astronaut";
