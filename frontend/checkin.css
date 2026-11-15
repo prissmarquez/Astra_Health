@@ -114,6 +114,26 @@
   cursor: wait;
 }
 
+/* Small spinning circle next to "Connecting..."
+   It uses the same color and size as the button text */
+.spinner {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-left: 4px;
+  vertical-align: middle;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .measure-status {
   min-height: 16px;
   font-size: 12px;
