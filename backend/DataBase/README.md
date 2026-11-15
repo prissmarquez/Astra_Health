@@ -13,7 +13,8 @@ backend/DataBase/
 │   ├── 006_leader_role.sql      adds the 'leader' role
 │   ├── 007_crew_limits_and_leader.sql   4-member limit, leader rules, crew visibility, realtime
 │   ├── 008_exercising_flag.sql  exercising flag on measurements (used by the ML)
-│   └── 009_rename_indicators_to_ml.sql  indicator codes renamed to the ML names
+│   ├── 009_rename_indicators_to_ml.sql  indicator codes renamed to the ML names
+│   └── 010_health_analyses.sql  stored ML results (traffic light, reasons) per analysis
 ├── connection.py                Supabase client (publishable key + user token)
 ├── measurements.py              functions for Backend 2
 ├── check_connection.py          connection and security check
@@ -53,6 +54,7 @@ backend/DataBase/
 | `sensor_indicators` | Which indicator each sensor measures and with what method. |
 | `measurements` | One row per indicator: sensor, value, status, date and time, source, `exercising`. **The mission is assigned automatically** from the date. `exercising = true` means the reading was taken during or right after exercise; the ML then uses its exercise ranges (a high temperature or heart rate is expected and is not compared with the resting baseline). |
 | `daily_adaptation` | Adaptation score 0-1 per astronaut per day. Written only by the backend/ML process. |
+| `health_analyses` | One row per ML analysis (`/analysis`): `traffic_light` (`green` / `yellow` / `red`), `mode` (`startup` / `personal`), `clinical_reasons`, `deviations`, `connections`, `detected_by_ml`, `model_version`, `analyzed_at`. The `id` is the reading's id, so a resend is never duplicated. **Insert only** (medical record). Read: own; the leader also reads analyses taken in their crew; the admin (ground medical team) reads all. Realtime enabled. |
 
 **Views** (virtual tables built from the data above; they respect RLS):
 
