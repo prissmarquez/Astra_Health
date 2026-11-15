@@ -1,4 +1,5 @@
 import sys
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
@@ -6,9 +7,9 @@ from typing import Literal
 import joblib
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import AwareDatetime, BaseModel, Field
 
 # ml/ and DataBase/ are plain script folders, so we add them to the import path
 BACKEND = Path(__file__).resolve().parent
@@ -17,7 +18,7 @@ sys.path.insert(0, str(BACKEND / "DataBase"))
 
 from connection import public_client, user_client  # noqa: E402
 from health_engine import IND, WINDOW, analyze  # noqa: E402
-from measurements import list_daily_readings  # noqa: E402
+from measurements import list_daily_readings, save_measurements  # noqa: E402
 
 # DB column names -> names the model was trained with (only the ones that differ)
 DB_TO_ML = {
@@ -26,6 +27,23 @@ DB_TO_ML = {
     "mood_positive": "positive_mood",
     "mood_negative": "negative_mood",
 }
+ML_TO_DB = {ml: db for db, ml in DB_TO_ML.items()}
+
+# Which sensor and entry method records each indicator
+# (sensor_indicators in DataBase/migrations/003_catalogs.sql)
+SENSOR_FOR = {
+    "heart_rate": ("astroskin", "bluetooth"),
+    "hrv": ("astroskin", "bluetooth"),
+    "spo2": ("astroskin", "bluetooth"),
+    "systolic_pressure": ("astroskin", "bluetooth"),
+    "temperature": ("astroskin", "bluetooth"),
+    "sleep_min": ("oura_ring", "calculated"),
+    "glucose": ("continuous_glucose_monitor", "bluetooth"),
+    "positive_mood": ("mood_questionnaire", "questionnaire"),
+    "negative_mood": ("mood_questionnaire", "questionnaire"),
+    "diastolic_pressure": ("manual_entry", "manual"),  # no flown BLE sensor yet
+}
+
 ADAPTATION_DAYS = 75  # Stahn 2017, same as simulate_astronauts.py
 # Fallback copy of mission_types (003_catalogs.sql): (flight_days, post_flight_days)
 DEFAULT_MISSION_TYPES = {"short": (14, 7), "standard": (180, 14), "long": (365, 21)}
@@ -41,27 +59,45 @@ app.add_middleware(
 )
 
 bearer = HTTPBearer(auto_error=False)
+
 MODEL_PACKAGE = joblib.load(BACKEND / "ml" / "isolation_forest_model.pkl")
+MODEL_VERSION = str(MODEL_PACKAGE.get("trained", "unknown"))
 
 
-class Reading(BaseModel):
+# ---------- Request / response shapes ----------------------------------------
+
+
+class Vitals(BaseModel):
     heart_rate: float = Field(..., examples=[68])
     hrv: float = Field(..., examples=[55])
-    sleep_min: float = Field(..., examples=[400])
+    sleep_min: float = Field(..., examples=[420])
     positive_mood: float = Field(..., examples=[32])
     negative_mood: float = Field(..., examples=[14])
-    glucose: float = Field(..., examples=[78])
+    glucose: float = Field(..., examples=[85])
     systolic_pressure: float = Field(..., examples=[115])
     diastolic_pressure: float = Field(..., examples=[75])
-    temperature: float = Field(..., examples=[37.0])
+    temperature: float = Field(..., examples=[36.8])
     spo2: float = Field(..., examples=[98])
     exercising: bool = False
-    day: date | None = None  # empty = today (UTC)
-    astronaut_id: str | None = None  # empty = the token's owner
     # Optional overrides for testing when there is no mission in the DB
     phase: Literal["pre_flight", "flight", "post_flight"] | None = None
     mission_day: int | None = None  # 0 = launch day, negative = pre-flight
     mission_type: Literal["short", "standard", "long"] | None = None
+
+
+class Reading(Vitals):
+    """POST /analysis: preview only, nothing is saved."""
+
+    day: date | None = None  # empty = today (UTC)
+    astronaut_id: str | None = None  # empty = the token's owner
+
+
+class OfflineReading(Vitals):
+    """POST /sync: a reading stored in the browser while offline."""
+
+    id: uuid.UUID  # crypto.randomUUID() on the device
+    taken_at: AwareDatetime  # device clock with time zone, e.g. "2026-11-15T06:00:00Z"
+    is_simulated: bool = False  # true = test data (saved with the simulator sensor)
 
 
 class AnalysisResult(BaseModel):
@@ -79,12 +115,21 @@ class AnalysisResult(BaseModel):
     history_days: int
 
 
-# def get_token(authorization):
-#     if not authorization or not authorization.lower().startswith("bearer "):
-#         raise HTTPException(
-#             401, "Send the header  Authorization: Bearer <access_token>"
-#         )
-#     return authorization.split(" ", 1)[1].strip()
+class SyncItem(BaseModel):
+    id: uuid.UUID
+    ok: bool
+    new_measurements: int = 0  # 0 when the reading had already been uploaded
+    analysis: AnalysisResult | None = None
+    error: str | None = None  # the front-end keeps this reading pending
+
+
+# ---------- Helpers ------------------------------------------------------------
+
+
+def require_token(credentials):
+    if credentials is None:
+        raise HTTPException(401, "Click Authorize in /docs and paste your access_token")
+    return credentials.credentials
 
 
 def get_user_id(token):
@@ -128,12 +173,12 @@ def phase_and_adaptation(phase, mission_day, mission_type, mission_types):
     return phase, 0.0  # pre_flight or no mission: Earth baseline
 
 
-def mission_context(reading, day, rows):
+def mission_context(vitals, day, rows):
     """Request values first, then the latest DB row that has a mission."""
     phase, mission_day, mission_type = (
-        reading.phase,
-        reading.mission_day,
-        reading.mission_type,
+        vitals.phase,
+        vitals.mission_day,
+        vitals.mission_type,
     )
     with_mission = [r for r in rows if r.get("mission_day") is not None]
     if with_mission:
@@ -167,21 +212,8 @@ def history_frame(rows, astronaut_id, mission_types):
     return df[["astronaut", "day", "adaptation", *IND]].reset_index(drop=True)
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok", "model_trained": MODEL_PACKAGE.get("trained")}
-
-
-@app.post("/analysis", response_model=AnalysisResult)
-def analysis(
-    reading: Reading, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
-):
-    if credentials is None:
-        raise HTTPException(401, "Click Authorize in /docs and paste your access_token")
-    token = credentials.credentials
-    astronaut_id = reading.astronaut_id or get_user_id(token)
-    day = reading.day or datetime.now(timezone.utc).date()
-
+def run_analysis(token, vitals, astronaut_id, day, mission_types):
+    """Reads the last 14 days from Supabase and runs the health engine."""
     try:
         rows = list_daily_readings(
             token,
@@ -195,21 +227,22 @@ def analysis(
             502, f"Could not read history from Supabase: {error}"
         ) from error
 
-    mission_types = get_mission_types(token)
-    phase, mission_day, mission_type = mission_context(reading, day, rows)
+    phase, mission_day, mission_type = mission_context(vitals, day, rows)
     phase, adaptation = phase_and_adaptation(
         phase, mission_day, mission_type, mission_types
     )
 
-    past = [r for r in rows if r["day"] != day.isoformat()]  # today is the new reading
+    past = [
+        r for r in rows if r["day"] != day.isoformat()
+    ]  # that day is the new reading
     history = history_frame(past, astronaut_id, mission_types)
 
-    new = {c: getattr(reading, c) for c in IND}
+    new = {c: getattr(vitals, c) for c in IND}
     new.update(
         astronaut=astronaut_id,
         day=day.toordinal(),
         adaptation=adaptation,
-        exercising=reading.exercising,
+        exercising=vitals.exercising,
     )
     result = analyze(history, new, MODEL_PACKAGE)
 
@@ -222,3 +255,107 @@ def analysis(
         adaptation=round(adaptation, 3),
         history_days=len(history),
     )
+
+
+def to_measurements(reading):
+    """One offline reading -> 10 rows for the measurements table.
+    Each row id is derived from the reading id (uuid5), so a resend gives the
+    same ids and the database ignores it instead of duplicating it."""
+    rows = []
+    for c in IND:
+        sensor, source = SENSOR_FOR[c]
+        if reading.is_simulated:
+            sensor, source = "orbit_health_simulator", "system"
+        rows.append(
+            {
+                "id": str(uuid.uuid5(reading.id, c)),
+                "indicator": ML_TO_DB.get(c, c),
+                "sensor_id": sensor,
+                "value": getattr(reading, c),
+                "status": "taken",
+                "taken_at": reading.taken_at.isoformat(),
+                "source": source,
+                "is_simulated": reading.is_simulated,
+            }
+        )
+    return rows
+
+
+def save_analysis(token, reading, result):
+    """Stores the traffic light in health_analyses (migration 008). Insert-only."""
+    row = {
+        "id": str(reading.id),
+        "taken_at": reading.taken_at.isoformat(),
+        "day": result.day.isoformat(),
+        "traffic_light": result.traffic_light,
+        "mode": result.mode,
+        "clinical_reasons": result.clinical_reasons,
+        "deviations": result.deviations,
+        "connections": result.connections,
+        "detected_by_ml": result.detected_by_ml,
+        "phase": result.phase,
+        "mission_day": result.mission_day,
+        "adaptation": result.adaptation,
+        "history_days": result.history_days,
+        "exercising": reading.exercising,
+        "model_version": MODEL_VERSION,
+    }
+    (
+        user_client(token)
+        .table("health_analyses")
+        .upsert(row, on_conflict="id", ignore_duplicates=True, default_to_null=False)
+        .execute()
+    )
+
+
+# ---------- Endpoints ------------------------------------------------------------
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "model_trained": MODEL_VERSION}
+
+
+@app.post("/analysis", response_model=AnalysisResult)
+def analysis(
+    reading: Reading, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
+):
+    """Preview: analyses one reading without saving anything."""
+    token = require_token(credentials)
+    astronaut_id = reading.astronaut_id or get_user_id(token)
+    day = reading.day or datetime.now(timezone.utc).date()
+    return run_analysis(token, reading, astronaut_id, day, get_mission_types(token))
+
+
+@app.post("/sync", response_model=list[SyncItem])
+def sync(
+    readings: list[OfflineReading],
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+):
+    """Uploads the offline queue: for each reading (oldest first) saves its
+    measurements, analyses it and saves the result. Safe to resend."""
+    token = require_token(credentials)
+    astronaut_id = get_user_id(
+        token
+    )  # always yourself: RLS only lets you save your own data
+    mission_types = get_mission_types(token)
+
+    results = []
+    for reading in sorted(readings, key=lambda r: r.taken_at):
+        try:
+            inserted = save_measurements(token, to_measurements(reading))
+            day = reading.taken_at.astimezone(timezone.utc).date()
+            result = run_analysis(token, reading, astronaut_id, day, mission_types)
+            save_analysis(token, reading, result)
+            results.append(
+                SyncItem(
+                    id=reading.id,
+                    ok=True,
+                    new_measurements=len(inserted),
+                    analysis=result,
+                )
+            )
+        except Exception as error:  # one bad reading does not stop the rest
+            detail = error.detail if isinstance(error, HTTPException) else str(error)
+            results.append(SyncItem(id=reading.id, ok=False, error=detail))
+    return results
