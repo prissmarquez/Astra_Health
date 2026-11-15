@@ -1,0 +1,458 @@
+:root {
+  --card: rgba(8, 20, 50, 0.78);
+  --border: #2a4d99;
+  --text: #e8eefc;
+  --green: #2ee59d;
+  --blue: #7aa2ff;
+  --red: #ff5d6c;
+  --yellow: #ffc83d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+  background-image: url("imagenfondo.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* DASHBOARD */
+
+.dashboard {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  grid-template-columns: 1.2fr 1fr 1fr;
+
+  grid-template-areas:
+    "header header header"
+    "salud registro notificacion"
+    "atencion atencion actividades"
+    "equipo equipo actividades"
+    "nav nav nav";
+}
+
+/* TARJETAS */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+}
+
+.card h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+/* HEADER */
+
+.header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo-nasa,
+.foto-perfil {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.logo-nasa {
+  object-fit: contain;
+}
+
+.foto-perfil {
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid var(--blue);
+}
+
+.usuario,
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.usuario small,
+.bloque small {
+  opacity: 0.8;
+}
+
+.bloque {
+  border-left: 1px solid var(--border);
+  padding-left: 16px;
+}
+
+.alerta small {
+  color: var(--red);
+}
+
+.reloj {
+  font-size: 24px;
+  color: var(--red);
+}
+
+.conectado {
+  margin-left: auto;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.punto {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+}
+
+/* BARRAS DE PROGRESO */
+
+.barra {
+  height: 6px;
+  background: #1a2a50;
+  border-radius: 4px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.barra div {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.barra.rojo div {
+  background: var(--red);
+}
+
+.barra.verde div {
+  background: var(--green);
+}
+
+/* SECCIONES */
+
+.salud {
+  grid-area: salud;
+}
+
+.registro {
+  grid-area: registro;
+  text-align: center;
+}
+
+.notificacion {
+  grid-area: notificacion;
+  border-color: var(--red);
+  background: rgba(80, 15, 30, 0.7);
+  text-align: center;
+}
+
+.atencion {
+  grid-area: atencion;
+  border-color: var(--yellow);
+}
+
+.equipo {
+  grid-area: equipo;
+}
+
+.actividades {
+  grid-area: actividades;
+}
+
+.nav {
+  grid-area: nav;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+/* SALUD GENERAL */
+
+.salud-contenido {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.anillo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+
+  background: conic-gradient(
+    var(--green) var(--pct, 0%),
+    #1a2a50 0
+  );
+
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.anillo::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background: #071230;
+}
+
+.anillo span {
+  position: relative;
+  font-size: 26px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.anillo small {
+  display: block;
+  font-size: 10px;
+  font-weight: normal;
+}
+
+/* LISTA DE INDICADORES */
+
+.lista-indicadores {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.lista-indicadores li {
+  display: grid;
+  grid-template-columns: 24px 70px auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.lista-indicadores .etiqueta {
+  color: #9db4e8;
+  font-size: 14px;
+}
+
+.lista-indicadores .valor {
+  color: #fff;
+  font-size: 15px;
+}
+
+.ico {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 15px;
+}
+
+.ico-rojo {
+  color: var(--red);
+}
+
+.ico-azul {
+  color: #4cc9ff;
+}
+
+.ico-morado {
+  color: #8a7dff;
+}
+
+/* BOTONES */
+
+.btn-principal,
+.btn-borde {
+  border-radius: 22px;
+  padding: 10px 22px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.btn-principal {
+  background: var(--blue);
+  border: none;
+  color: #04122e;
+  font-weight: 600;
+  margin-top: 18px;
+}
+
+.btn-principal:hover {
+  filter: brightness(1.1);
+}
+
+.btn-borde {
+  background: transparent;
+  border: 1px solid var(--red);
+}
+
+.btn-borde.claro {
+  border-color: var(--blue);
+  margin-left: auto;
+}
+
+.aviso {
+  font-size: 40px;
+}
+
+/* ATENCIÓN */
+
+.alerta-fila {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 200, 61, 0.15);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.alerta-fila strong {
+  color: var(--yellow);
+}
+
+.termo {
+  font-size: 28px;
+}
+
+/* EQUIPO */
+
+.equipo-lista {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.miembro {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: rgba(20, 40, 90, 0.5);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #2a4a8f;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+  border: 2px solid var(--blue);
+  object-fit: cover;
+}
+
+.estado.optimal {
+  color: var(--green);
+}
+
+.estado.follow-up {
+  color: var(--yellow);
+}
+
+/* ACTIVIDADES */
+
+.actividades ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.actividades li {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.actividades input {
+  accent-color: var(--green);
+  width: 18px;
+  height: 18px;
+}
+
+/* NAVEGACIÓN */
+
+.nav a {
+  padding: 8px 24px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.nav a.activo {
+  background: rgba(122, 162, 255, 0.25);
+  color: var(--blue);
+}
+
+/* DISEÑO RESPONSIVO */
+
+@media (max-width: 800px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+
+    grid-template-areas:
+      "header"
+      "salud"
+      "registro"
+      "notificacion"
+      "atencion"
+      "actividades"
+      "equipo"
+      "nav";
+  }
+
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .equipo-lista {
+    flex-wrap: wrap;
+  }
+
+  .alerta-fila {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard {
+    padding: 10px;
+  }
+
+  .salud-contenido {
+    flex-wrap: wrap;
+  }
+
+  .nav {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nav a {
+    padding: 8px 12px;
+  }
+}
