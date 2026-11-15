@@ -1,0 +1,13 @@
+# Real key: NEVER committed to git.
+.env
+.env.*
+!.env.example
+
+# Explanations cached on this machine (demo_responses.json IS committed).
+.cache/
+
+# Virtual environment and Python-generated files
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
