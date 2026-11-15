@@ -19,7 +19,9 @@ backend/DataBase/
 │   ├── 012_leader_codes.sql     LDR-xxxx leaders; replace_crew_leader()
 │   ├── 013_health_analyses_backend_only.sql   only the backend writes ML analyses
 │   ├── 014_admin_crew_views.sql crew_overview and unassigned_astronauts (admin panel)
-│   └── 015_crew_id_prefix.sql   crew ids always start with ASTRA-
+│   ├── 015_crew_id_prefix.sql   crew ids always start with ASTRA-
+│   ├── 016_missions_and_single_admin.sql   MSN- mission codes, one admin, move_to_mission()
+│   └── 017_admin_profile_after_metadata.sql   admin profile created once app_metadata arrives
 ├── connection.py                Supabase client (publishable key + user token)
 ├── measurements.py              functions for Backend 2
 ├── check_connection.py          connection and security check
@@ -167,6 +169,19 @@ It uses the admin's own token (no secret key), so the database checks the role a
 
 Errors to show as they come: *"Crew is full (4 members)"*, *"has no leader yet: its LDR must join first"*, *"already has a leader: use replace_crew_leader()"*, *"must have exactly one leader"*.
 
+### Missions and moving people
+
+- Every mission has a code **`MSN-` + 1 to 14 capitals or digits** (e.g. `MSN-01`), like crews use `ASTRA-`.
+- **`POST /admin/missions`**: `{ "code": "MSN-03", "name": "...", "mission_type": "short|standard|long", "launch_at": "2026-12-01T12:00:00Z", "crew_id": "ASTRA-01" }`. The planned return is computed by the database. With `crew_id`, the crew's members join automatically (the crew needs its leader; 4 people max).
+- **`POST /admin/move`**: `{ "astronaut_code": "ASP-1003", "crew_id": "ASTRA-02", "mission_code": "MSN-02" }`. Send only what changes; `null` removes (leave the crew / leave current missions). Changing crew first joins the new crew's unfinished missions; then the mission move is applied. Finished missions stay in history.
+- Only the admin can create missions or move people. Leaders and crew members are refused by the API and again by the database (`set_user_crew`, `move_to_mission`).
+- **There is only one admin account** (`ADM-…`), now and in the future: the database rejects a second one.
+
+### Demo data
+
+1. Run `python create_test_users.py` (asks for one password for all accounts; needs the secret key): creates `ADM-0001`, `LDR-1001` + `ASP-1001..1003`, `LDR-2001` + `ASP-2001..2003`.
+2. Crews `ASTRA-01` / `ASTRA-02`, missions `MSN-01` / `MSN-02` and the simulated history (5 days for `ASTRA-01`, 3 days for `ASTRA-02`, `context = 'seed_demo'`) are loaded with SQL by Back-end 1.
+
 ## Login with codes
 
 Every account has a short Id shown in the app (`profiles.astronaut_code`):
@@ -214,7 +229,7 @@ ASP-1001  ->  asp-1001@crew.astra-health.test
 
 ### Back-end 1
 
-1. Apply `001` to `015`, in order, once (SQL Editor or the Supabase connector).
+1. Apply `001` to `017`, in order, once (SQL Editor or the Supabase connector).
 2. **Authentication → Users → Add user**: create a test user (tick *Auto Confirm User*).
 3. Copy `backend/.env.example` to `backend/.env` and fill it in.
 4. Install and check:

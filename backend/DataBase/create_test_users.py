@@ -1,38 +1,49 @@
-"""Creates the demo accounts with Gael's codes (migrations 011 + 012) and crew ASTRA-A.
+"""Creates the demo ACCOUNTS only (Supabase Auth). Crews, missions and the
+simulated history are loaded afterwards with SQL (see README, "Demo data").
 
-Crew ASTRA-A (max 4): LDR-1001 (leader) + ASP-1001 + ASP-1002 + ASP-1003.
-Ground: ADM-0001 (admin, never in a crew).
+Ground:   ADM-0001 (the only admin; never in a crew)
+ASTRA-01: LDR-1001 + ASP-1001, ASP-1002, ASP-1003   (mission MSN-01, 5 days of data)
+ASTRA-02: LDR-2001 + ASP-2001, ASP-2002, ASP-2003   (mission MSN-02, 3 days of data)
 
-Needs the SECRET key (an ADM account needs app_metadata.role = admin, which onlys
-the secret key can set). Type it in the terminal only, never in a file or git:
+Every account gets the same password, typed in the terminal (never stored).
+Needs the SECRET key (the ADM account needs app_metadata.role = admin, which only
+the secret key can set). Keep it in backend/.env or type it in the terminal:
     cd backend/DataBase
-    export SUPABASE_SECRET_KEY="sb_secret_..."
-    python3 create_test_users.py
+    python create_test_users.py
 """
 
 import os
-from pathlib import Path
 from getpass import getpass
+from pathlib import Path
 
 from dotenv import load_dotenv
 from supabase import create_client
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # backend/.env
+HERE = Path(__file__).resolve().parent
+load_dotenv(HERE / ".env")         # backend/DataBase/.env
+load_dotenv(HERE.parent / ".env")  # backend/.env (if it exists)
+if not os.environ.get("SUPABASE_SECRET_KEY"):
+    os.environ["SUPABASE_SECRET_KEY"] = getpass("Secret key (sb_secret_..., not shown): ")
 admin = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
 
-DOMAIN = "crew.astra-health.test"  # technical email domain from migration 011
-CREW = "ASTRA-A"
+DOMAIN = "crew.astra-health.test"  # technical email domain (migration 011)
 
-# (code, name). The leader goes first: an empty crew accepts no ASP until its LDR joins.
+# (code, name). The database sets the role from the code (migration 012).
 ACCOUNTS = [
-    ("LDR-1001", "Leader 1001"),
-    ("ASP-1001", "Astronaut 1001"),
-    ("ASP-1002", "Astronaut 1002"),
-    ("ASP-1003", "Astronaut 1003"),
-    ("ADM-0001", "Ground Admin"),
+    ("ADM-0001", "Ground Control"),
+    ("LDR-1001", "Elena Torres"),
+    ("ASP-1001", "Marco Silva"),
+    ("ASP-1002", "Mei Chen"),
+    ("ASP-1003", "Daniel Kim"),
+    ("LDR-2001", "Sofia Ramirez"),
+    ("ASP-2001", "Lucas Martin"),
+    ("ASP-2002", "Aisha Okafor"),
+    ("ASP-2003", "Noah Fischer"),
 ]
 
-password = getpass("Password for all demo accounts: ")
+password = getpass("Password for all demo accounts (min 8 characters): ")
+if len(password) < 8:
+    raise SystemExit("The password needs at least 8 characters.")
 
 
 def user_id(code):
@@ -40,7 +51,6 @@ def user_id(code):
     return rows[0]["id"] if rows else None
 
 
-# 1) Accounts (the profile and its role are created by the database from the code)
 for code, name in ACCOUNTS:
     if user_id(code):
         print(code, "already exists")
@@ -54,14 +64,5 @@ for code, name in ACCOUNTS:
     })
     print(code, "created")
 
-# 2) Crew
-admin.table("crews").upsert({"id": CREW, "name": "Astra Crew A"}).execute()
-
-# 3) Members, leader first (the crew rejects ASP until its LDR has joined)
-for code in ["LDR-1001", "ASP-1001", "ASP-1002", "ASP-1003"]:
-    uid = user_id(code)
-    admin.table("profiles").update({"crew_id": CREW}).eq("id", uid).execute()
-
-# 4) Check
-for p in admin.table("profiles").select("astronaut_code, name, role, crew_id").order("role").execute().data:
+for p in admin.table("profiles").select("astronaut_code, name, role").order("astronaut_code").execute().data:
     print(p)
