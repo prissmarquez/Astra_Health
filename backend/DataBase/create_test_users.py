@@ -11,12 +11,13 @@ the secret key can set). Type it in the terminal only, never in a file or git:
 """
 
 import os
+from pathlib import Path
 from getpass import getpass
 
 from dotenv import load_dotenv
 from supabase import create_client
 
-load_dotenv()  # reads SUPABASE_URL from backend/DataBase/.env
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # backend/.env
 admin = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
 
 DOMAIN = "crew.astra-health.test"  # technical email domain from migration 011

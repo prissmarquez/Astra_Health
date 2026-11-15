@@ -1,4 +1,4 @@
-"""Body systems of the Body AI screen (frontend/BodyAi.html).
+"""Body systems of the Body AI screen (frontend/pages/BodyAi.html).
 
 Maps each system to the indicators that describe it and builds the pieces of
 GET /body/{system}: the status pill, the metric with its 14-day line, and the

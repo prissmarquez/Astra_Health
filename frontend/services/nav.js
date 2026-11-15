@@ -1,9 +1,9 @@
 
 const NAV_ITEMS = [
-  { label: "Home",     href: "principal_page.html" },
+  { label: "Dashboard",   href: "principal_page.html" },
   { label: "History",  href: "historical.html" },
   { label: "Check-in", href: "checkin.html" },
-  { label: "Body",     href: "BodyAi.html" },
+  { label: "AI Insights", href: "BodyAi.html" },
   { label: "Sensors",  href: "sensors.html" },
   { label: "Settings", href: null }  // not built yet
 ];

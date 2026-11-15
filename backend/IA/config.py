@@ -1,4 +1,4 @@
-"""Settings for the AI explainer, read from backend/IA/.env (never committed)."""
+"""Settings for the AI explainer, read from backend/.env (never committed)."""
 
 import os
 from dataclasses import dataclass
@@ -6,8 +6,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-BASE = Path(__file__).parent
-load_dotenv(BASE / ".env")
+BASE = Path(__file__).resolve().parent
+# backend/.env; missing file is ignored and real environment variables
+# (e.g. on Railway) take precedence over it.
+load_dotenv(BASE.parent / ".env")
 
 # USD per million tokens (input, output). Used only to show the cost of a call.
 PRICES = {

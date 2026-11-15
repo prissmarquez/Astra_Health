@@ -3,49 +3,49 @@
 // Strategy: network-first (fresh file when online, cached copy when offline).
 // API calls (FastAPI /sync, /analysis) and Supabase are NEVER cached.
 
-const CACHE_NAME = "astra-cache-v4";  // change the version to drop old copies
+const CACHE_NAME = "astra-cache-v5";  // change the version to drop old copies
 
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
-// Every HTML, CSS and JS file of frontend/ (+ images). Missing files are skipped.
+// Every HTML (pages/), CSS (style/) and JS (services/) file of frontend/ (+ images). Missing files are skipped.
 const APP_FILES = [
   "./",
   // Pages
-  "BodyAi.html",
-  "admi.html",
-  "ast_checkin.html",
-  "checkin.html",
-  "historical.html",
-  "history_admi.html",
-  "index.html",
-  "panas.html",
-  "principal_page.html",
-  "sensors.html",
+  "pages/BodyAi.html",
+  "pages/admi.html",
+  "pages/ast_checkin.html",
+  "pages/checkin.html",
+  "pages/historical.html",
+  "pages/history_admi.html",
+  "pages/index.html",
+  "pages/panas.html",
+  "pages/principal_page.html",
+  "pages/sensors.html",
   // Styles
-  "BodyAi_style.css",
-  "admi.css",
-  "astro_in.css",
-  "checkin.css",
-  "historial.css",
-  "panas.css",
-  "sensors.css",
-  "style_login.css",
-  "styles.css",
+  "style/BodyAi_style.css",
+  "style/admi.css",
+  "style/astro_in.css",
+  "style/checkin.css",
+  "style/historial.css",
+  "style/panas.css",
+  "style/sensors.css",
+  "style/style_login.css",
+  "style/styles.css",
   // Scripts
-  "admi.js",
-  "auth_guard.js",
-  "ble_codec.js",
-  "checkin.js",
-  "nav.js",
-  "panas.js",
-  "principal_page.js",
-  "script_BodyAi.js",
-  "script_admi.js",
-  "script_astroin.js",
-  "script_historical.js",
-  "script_login.js",
-  "sensors.js",
-  "supabase_client.js",
+  "services/admi.js",
+  "services/auth_guard.js",
+  "services/ble_codec.js",
+  "services/checkin.js",
+  "services/nav.js",
+  "services/panas.js",
+  "services/principal_page.js",
+  "services/script_BodyAi.js",
+  "services/script_admi.js",
+  "services/script_astroin.js",
+  "services/script_historical.js",
+  "services/script_login.js",
+  "services/sensors.js",
+  "services/supabase_client.js",
   // Images
   "assets/BP.jpg",
   "assets/background.jpg",
@@ -129,7 +129,7 @@ self.addEventListener("fetch", function (event) {
       return caches.match(request, { ignoreSearch: true }).then(function (cached) {
         if (cached) return cached;
         if (request.mode === "navigate") {
-          return caches.match("index.html");
+          return caches.match("pages/index.html");
         }
         return new Response("Offline", { status: 503, statusText: "Offline" });
       });

@@ -4,21 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Astra Health - History</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="historial.css">
+  <link rel="stylesheet" href="../style/styles.css">
+  <link rel="stylesheet" href="../style/historial.css">
   <!-- Session guard: redirect to the login if there is no session -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_client.js"></script>
-  <script src="auth_guard.js"></script>
-  <script src="nav.js"></script>
+  <script src="../services/supabase_client.js"></script>
+  <script src="../services/auth_guard.js"></script>
+  <script src="../services/nav.js"></script>
 </head>
 <body>
   <div class="page">
 
     <!-- HEADER -->
     <header class="card header">
-      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
-      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+      <img src="../assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="../assets/profile.png" alt="Profile picture" class="foto-perfil">
       <div class="usuario">
         <strong id="user-name">User name</strong>
         <small id="user-role">Role / Mission</small>
@@ -49,7 +49,7 @@
             <div class="filter-group">
               <span>Indicator:</span>
               <span class="select-box">
-                <img src="assets/recourse2.png" alt="" class="select-icon" id="indicator-icon">
+                <img src="../assets/recourse2.png" alt="" class="select-icon" id="indicator-icon">
                 <select id="indicator-filter">
                   <option value="hr" data-unit="BPM">Heart rate</option>
                   <option value="spo2" data-unit="%">SpO₂</option>
@@ -138,6 +138,6 @@
 
 </div>
 
-<script src="script_historical.js"></script>
+<script src="../services/script_historical.js"></script>
 </body>
 </html>

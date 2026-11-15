@@ -1,79 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Log in - ASTRA HEALTH</title>
-  <link rel="stylesheet" href="style_login.css">
+  <!-- The real login page is pages/index.html; this keeps the old root URL working. -->
+  <meta http-equiv="refresh" content="0; url=pages/index.html">
+  <title>Astra Health</title>
+  <script>location.replace("pages/index.html" + location.search + location.hash);</script>
 </head>
-
 <body>
-
-
-  <div class="user-status">
-    <div class="user-status-avatar">&#128100;</div>
-    <span id="userStatusText">Not authenticated</span>
-  </div>
-
-  <main class="container">
-
-    <!-- Left panel -->
-    <section class="hero">
-      <p class="hero-brand"><strong>ASTRONAUT</strong> HEALTH PORTAL</p>
-
-      <h1 class="hero-title">Your health,<br>in every mission.</h1>
-      <div class="hero-line"></div>
-
-      <ul class="hero-features">
-        <li>&#9829; Health monitoring</li>
-        <li>&#10010; Medical follow-up</li>
-        <li>&#9650; Orbital well-being</li>
-      </ul>
-    </section>
-
-    <!-- Right panel -->
-    <section class="login">
-      <div class="login-card">
-        <p class="login-logo"><strong>ASTRA</strong> HEALTH</p>
-
-        <h2>Log in</h2>
-        <p class="login-subtitle">Access the ASTRA HEALTH portal for astronauts.</p>
-
-        <form id="loginForm">
-          <label for="astronautId">Astronaut ID</label>
-          <input type="text" id="astronautId" placeholder="Enter your ID (e.g., ASP-1001)">
-
-          <label for="password">Password</label>
-          <div class="password-box">
-            <input type="password" id="password" placeholder="Enter your password">
-            <button type="button" id="showPasswordBtn">Show</button>
-          </div>
-
-          <p id="message" class="message"></p>
-
-          <button type="submit" id="loginBtn" class="login-btn">Enter the portal &rarr;</button>
-        </form>
-
-        <a href="#" id="helpLink" class="help-link">Need access help?</a>
-
-        <!-- Help box -->
-        <div id="helpBox" class="help-box hidden">
-          <p>Your ID uses the format <strong>ASP-0000</strong> (astronaut), <strong>LDR-0000</strong> (leader) or
-            <strong>ADM-0000</strong> (ground).</p>
-          <p>If you forgot your password, contact the ground medical team.</p>
-        </div>
-      </div>
-    </section>
-    
-
-  </main>
-
-
-  <!-- Order matters: Supabase library, then our client, then the login -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_client.js"></script>
-  <script src="script_login.js"></script>
+  <a href="pages/index.html">Astra Health</a>
 </body>
-
 </html>

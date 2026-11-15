@@ -4,21 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Astra Health - Body AI</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="BodyAi_style.css">
+  <link rel="stylesheet" href="../style/styles.css">
+  <link rel="stylesheet" href="../style/BodyAi_style.css">
   <!-- Session: same order as checkin.html. auth_guard.js sends you to login without a session. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_client.js"></script>
-  <script src="auth_guard.js"></script>
-  <script src="nav.js"></script>
+  <script src="../services/supabase_client.js"></script>
+  <script src="../services/auth_guard.js"></script>
+  <script src="../services/nav.js"></script>
 </head>
 <body>
   <div class="body-page">
 
     <!-- HEADER -->
     <header class="card header">
-      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
-      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+      <img src="../assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="../assets/profile.png" alt="Profile picture" class="foto-perfil">
       <div class="usuario">
         <strong id="user-name">Username</strong>
         <small id="user-role">Role</small>
@@ -47,22 +47,6 @@
           <button type="button" class="system-btn" data-system="thermo"><span class="sys-ico">🌡️</span><span>Thermoregulation</span></button>
         </div>
       </aside>
-
-      <!-- CENTER: AI-GENERATED IMAGE -->
-      <section class="card body-figure" id="body-figure">
-        <h3>🖼️ AI image</h3>
-
-        <div class="image-box" id="image-box">
-          <p class="empty" id="image-placeholder">No image yet. Describe what you want to see.</p>
-        </div>
-
-        <form id="image-form" class="image-form" autocomplete="off">
-          <input id="image-prompt" class="field" type="text" maxlength="300"
-                 placeholder="e.g. Human heart, anatomical view">
-          <button type="submit" class="btn-principal" id="image-btn">Generate</button>
-        </form>
-        <p class="form-msg" id="image-msg" role="status"></p>
-      </section>
 
       <!-- RIGHT: AI ANALYSIS -->
       <section class="analysis">
@@ -104,6 +88,6 @@
 
   </div>
 
-  <script src="script_BodyAi.js"></script>
+  <script src="../services/script_BodyAi.js"></script>
 </body>
 </html>

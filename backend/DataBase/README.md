@@ -23,9 +23,8 @@ backend/DataBase/
 ├── connection.py                Supabase client (publishable key + user token)
 ├── measurements.py              functions for Backend 2
 ├── check_connection.py          connection and security check
-├── requirements.txt
-├── .env.example                 variable names, WITHOUT values
-└── .gitignore                   keeps .env and .venv out of git
+└── requirements.txt
+                                 (variables: backend/.env.example; ignores: /.gitignore at repo root)
 ```
 
 ## Essentials and where they live
@@ -217,7 +216,7 @@ ASP-1001  ->  asp-1001@crew.astra-health.test
 
 1. Apply `001` to `015`, in order, once (SQL Editor or the Supabase connector).
 2. **Authentication → Users → Add user**: create a test user (tick *Auto Confirm User*).
-3. Copy `.env.example` to `.env` in this folder and fill it in.
+3. Copy `backend/.env.example` to `backend/.env` and fill it in.
 4. Install and check:
 
 ```bash
@@ -265,7 +264,7 @@ The adaptation score is written with the **secret key** from a server-side proce
 There are four layers; `.gitignore` is only one of them.
 
 1. **`.env` + `.gitignore` (keys never reach GitHub).**
-   `.env` only lives on your computer. `.gitignore` is the list of files Git ignores; since it includes `.env`, it never gets committed. The repo only has `.env.example` (names, no values). To check: `git status` must not list `.env`, and `git check-ignore -v backend/DataBase/.env` must print the rule that ignores it.
+   `.env` only lives on your computer. `.gitignore` is the list of files Git ignores; since it includes `.env`, it never gets committed. The repo only has `backend/.env.example` (names, no values). To check: `git status` must not list `.env`, and `git check-ignore -v backend/.env` must print the rule that ignores it.
    If a key is ever committed by mistake, deleting it is not enough (it stays in git history): **rotate it** in Supabase → Project Settings → API Keys.
 
 2. **Two keys with different powers.**

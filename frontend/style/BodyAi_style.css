@@ -11,7 +11,7 @@
 
 .body-layout {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) minmax(0, 1.5fr);
+  grid-template-columns: 250px minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -37,36 +37,6 @@
   color: var(--text); text-decoration: none; text-align: center; font-size: 14px;
 }
 .back-btn:hover { background: rgba(122, 162, 255, 0.2); }
-
-/* AI IMAGE (center) */
-.body-figure { display: grid; gap: 12px; align-content: start; }
-.body-figure h3 { margin: 0; }
-
-.image-box {
-  min-height: 320px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(20, 40, 90, 0.5);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
-}
-.image-box img { max-width: 100%; max-height: 520px; object-fit: contain; display: block; }
-
-.image-form { display: flex; gap: 8px; }
-.image-form .field {
-  flex: 1; min-width: 0;
-  background: rgba(20, 40, 90, 0.6); color: var(--text);
-  border: 1px solid var(--blue); border-radius: 10px;
-  padding: 10px 12px; font-size: 14px; color-scheme: dark;
-}
-.image-form .field:focus { outline: none; border-color: #fff; }
-.image-form .btn-principal { margin-top: 0; white-space: nowrap; }
-.image-form .btn-principal:disabled { opacity: .6; cursor: wait; }
-
-.form-msg { margin: 0; min-height: 18px; font-size: 13px; }
-.form-msg.error { color: var(--red); }
-.form-msg.ok { color: var(--green); }
-.empty { opacity: .6; font-size: 13px; text-align: center; padding: 16px; }
 
 /* AI BOX */
 .analysis { display: grid; gap: 14px; min-width: 0; }

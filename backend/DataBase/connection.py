@@ -11,15 +11,17 @@ from pathlib import Path
 from dotenv import load_dotenv
 from supabase import Client, create_client
 
-# Reads backend/DataBase/.env (never committed to git).
-load_dotenv(Path(__file__).with_name(".env"))
+# Reads backend/.env (never committed to git). If the file does not exist
+# (e.g. on Railway) nothing happens; variables already set in the environment
+# always win over the file.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 def _env(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
         raise RuntimeError(
-            f"Missing {name}. Copy .env.example to .env in backend/DataBase and fill it in."
+            f"Missing {name}. Copy backend/.env.example to backend/.env and fill it in."
         )
     return value
 

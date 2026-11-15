@@ -76,7 +76,7 @@ window.addEventListener("offline", updateConnectionStatus);
 // Every page loads this file, so registering here is enough.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
-    navigator.serviceWorker.register("sw.js").catch(function (error) {
+    navigator.serviceWorker.register("../sw.js").catch(function (error) {
       console.warn("Service worker not registered:", error);
     });
   });

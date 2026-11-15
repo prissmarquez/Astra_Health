@@ -5,12 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Astra Health</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="../style/styles.css">
   <!-- Session guard: redirect to the login if there is no session -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_client.js"></script>
-  <script src="auth_guard.js"></script>
-  <script src="nav.js"></script>
+  <script src="../services/supabase_client.js"></script>
+  <script src="../services/auth_guard.js"></script>
+  <script src="../services/nav.js"></script>
 </head>
 
 <body>
@@ -18,8 +18,8 @@
 
     <!-- HEADER -->
     <header class="card header">
-      <img src="assets/log_nasa.png" alt="NASA" class="logo-nasa">
-      <img src="assets/profile.png" alt="Profile picture" class="foto-perfil">
+      <img src="../assets/log_nasa.png" alt="NASA" class="logo-nasa">
+      <img src="../assets/profile.png" alt="Profile picture" class="foto-perfil">
 
       <div class="usuario">
         <strong id="nombre-usuario">Username</strong>
@@ -119,7 +119,7 @@
 
   </div>
   <!-- At the end of principal_page.html, replace the line that loads principal_page.js with these 3 lines -->
-  <script src="principal_page.js"></script>
+  <script src="../services/principal_page.js"></script>
 </body>
 
 </html>
