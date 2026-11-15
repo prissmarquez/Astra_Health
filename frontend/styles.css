@@ -36,7 +36,7 @@ body {
 
   grid-template-areas:
     "header header header"
-    "salud registro notificacion"
+    "salud grafica notificacion"
     "atencion atencion actividades"
     "equipo equipo actividades"
     "nav nav nav";
@@ -152,9 +152,8 @@ body {
   grid-area: salud;
 }
 
-.registro {
-  grid-area: registro;
-  text-align: center;
+.grafica {
+  grid-area: grafica;
 }
 
 .notificacion {
@@ -277,6 +276,83 @@ body {
   color: #8a7dff;
 }
 
+/* GRÁFICA DE INDICADORES */
+
+.barras {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 12px;
+  height: 150px;
+}
+
+.barra-g {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.barra-g .col {
+  width: 100%;
+  max-width: 36px;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  background: #1a2a50;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+}
+
+.barra-g .fill {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+}
+
+.fill.ok {
+  background: var(--green);
+}
+
+.fill.warn {
+  background: var(--yellow);
+}
+
+.barra-g .v {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.barra-g .l {
+  font-size: 12px;
+  color: #9db4e8;
+}
+
+.leyenda-g {
+  display: block;
+  margin-top: 10px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.dot-ok,
+.dot-warn {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-ok {
+  background: var(--green);
+}
+
+.dot-warn {
+  background: var(--yellow);
+}
+
 /* BOTONES */
 
 .btn-principal,
@@ -308,6 +384,11 @@ body {
 .btn-borde.claro {
   border-color: var(--blue);
   margin-left: auto;
+}
+
+a.btn-borde {
+  display: inline-block;
+  text-decoration: none;
 }
 
 .aviso {
@@ -401,6 +482,8 @@ body {
   padding: 8px 24px;
   border-radius: 20px;
   cursor: pointer;
+  color: var(--text);
+  text-decoration: none;
 }
 
 .nav a.activo {
@@ -417,7 +500,7 @@ body {
     grid-template-areas:
       "header"
       "salud"
-      "registro"
+      "grafica"
       "notificacion"
       "atencion"
       "actividades"
