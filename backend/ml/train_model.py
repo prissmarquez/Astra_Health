@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+import numpy as np
 import pandas as pd
 import joblib
 from sklearn.ensemble import IsolationForest
@@ -19,20 +20,23 @@ df["anomaly"] = df["anomaly"].fillna(0)
 df = compute_z(df)
 
 #  2. Train on normal days
-model = IsolationForest(n_estimators=200, contamination=0.05, random_state=42)
+model = IsolationForest(n_estimators=200, contamination=0.03, random_state=42)
 model.fit(df[df["anomaly"] == 0][ZCOLS])
 
 #  3. Evaluate the 3 layers
 cli = df.apply(clinical, axis=1)
 df["clinical_level"] = [x[0] for x in cli]
-zmax = df[ZCOLS].abs().max(axis=1)
-df["personal_level"] = (zmax > 2).astype(int) + (zmax > 3).astype(int)
+absz = df[ZCOLS].abs()
+zmax = absz.max(axis=1)
+df["personal_level"] = np.select(
+    [zmax > 4.5, (zmax > 3) | ((absz > 2.5).sum(axis=1) >= 2)], [2, 1], default=0
+)
 df["ml_anomaly"] = (model.predict(df[ZCOLS]) == -1).astype(int)
 df["final_level"] = df[["clinical_level", "personal_level", "ml_anomaly"]].max(axis=1)
 df["traffic_light"] = df["final_level"].map(TRAFFIC_LIGHT)
 
 print("\n--- Connections learned from the data (correlation of deviations) ---")
-corr = df[df["anomaly"] == 0][ZCOLS].corr()
+corr = df[ZCOLS].corr()
 pairs = corr.where(lambda m: m.abs() < 1).stack().abs().sort_values(ascending=False)
 print(pairs.drop_duplicates().head(6).round(2))
 
@@ -77,3 +81,11 @@ reading["temperature"] += 1.6
 reading["heart_rate"] += 16
 print("\n--- Demo: new reading with fever ---")
 print(analyze(history, reading, package))
+
+# where are the false positives coming from?
+fp = df[(df["anomaly"] == 0) & (df["final_level"] >= 1)]
+print("\n--- What causes the false alarms ---")
+print("clinical:", (fp["clinical_level"] >= 1).sum())
+print("personal:", (fp["personal_level"] >= 1).sum())
+print("ML:      ", (fp["ml_anomaly"] == 1).sum())
+print(fp.apply(lambda r: ", ".join(clinical(r)[1]), axis=1).value_counts().head(8))

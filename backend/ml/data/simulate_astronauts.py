@@ -14,14 +14,26 @@ mmash["total_sleep_min"] = mmash["total_sleep_min"].fillna(
 
 nasa = pd.read_csv(PROC / "nasa_i4_blood.csv")
 nasa = nasa[nasa["timepoint"] != "R+45"]
-GLU_VALUES = nasa["glucose_mg_dl"].dropna().values
-GLU_SD = nasa.groupby("SUBJECT_ID")["glucose_mg_dl"].std().mean()
+
+# glucose fully derived from NASA Inspiration4 (OSD-575) real data
+GLU = "glucose_mg_dl"
+pre = nasa[nasa["timepoint"].str.startswith("L")]  # pre-flight samples only
+GLU_BASES = (
+    pre.groupby("SUBJECT_ID")[GLU].mean().dropna().values
+)  # real baseline per crew member
+GLU_SD = pre.groupby("SUBJECT_ID")[GLU].std().median()  # real pre-flight variation
+GLU_LANDING = (
+    nasa[nasa["timepoint"] == "R+1"][GLU].mean() - pre[GLU].mean()
+)  # real landing spike
+print(
+    f"Glucose (NASA I4): bases {np.round(GLU_BASES, 1)}, SD {GLU_SD:.1f}, landing spike {GLU_LANDING:+.1f} mg/dL"
+)
 
 m = mmash.dropna(subset=["total_sleep_min"])
 SLEEP_MOOD_SLOPE = np.polyfit(m["total_sleep_min"], m["negative_mood"], 1)[0]
 print(f"Sleep→negative mood relationship (MMASH): {SLEEP_MOOD_SLOPE:.4f} per minute")
 
-# parameters obtained from internet research and papers
+# parameters obtained from research and papers
 PRE_DAYS = 10
 MISSIONS = {  # (flight days, post recovery days)
     "short": (14, 7),  # Inspiration4 / Axiom type
@@ -29,10 +41,10 @@ MISSIONS = {  # (flight days, post recovery days)
     "long": (365, 21),  # 1-year mission
 }
 TYPES = ["short"] * 9 + ["standard"] * 10 + ["long"] * 3
-ADAPTATION_DAYS = 75
-TEMP_CHANGE = 1.0
-SYS_CHANGE, DIA_CHANGE = -8, -9
-FLIGHT_SLEEP = 360
+ADAPTATION_DAYS = 75  # Stahn 2017
+TEMP_CHANGE = 1.0  # Stahn 2017
+SYS_CHANGE, DIA_CHANGE = -8, -9  # Norsk 2015
+FLIGHT_SLEEP = 360  # Barger 2014
 ANOMALY_PROB = 0.07
 
 
@@ -54,7 +66,7 @@ for i, (_, u) in enumerate(mmash.iterrows()):
     # Baseline for this astronaut
     hr0, hrv0, sleep0 = u["mean_hr_bpm"], u["hrv_rmssd_ms"], u["total_sleep_min"]
     pos0, neg0 = u["positive_mood"], u["negative_mood"]
-    glu0 = rng.choice(GLU_VALUES)
+    glu0 = rng.choice(GLU_BASES)  # CHANGED: real crew baseline
     sys0, dia0 = rng.normal(115, 6), rng.normal(75, 4)
     temp0 = rng.normal(37.0, 0.15)
     spo2_0 = rng.normal(97.5, 0.5)
@@ -72,9 +84,7 @@ for i, (_, u) in enumerate(mmash.iterrows()):
             "hrv": rng.normal(hrv0, 4),
             "sleep_min": sleep,
             "positive_mood": rng.normal(pos0, 2),
-            "negative_mood": rng.normal(
-                neg0 + SLEEP_MOOD_SLOPE * (sleep - sleep0), 2
-            ),
+            "negative_mood": rng.normal(neg0 + SLEEP_MOOD_SLOPE * (sleep - sleep0), 2),
             "glucose": rng.normal(glu0, GLU_SD),
             "systolic_pressure": rng.normal(sys0 + SYS_CHANGE * a, 5),
             "diastolic_pressure": rng.normal(dia0 + DIA_CHANGE * a, 4),
@@ -83,6 +93,10 @@ for i, (_, u) in enumerate(mmash.iterrows()):
             "anomaly": 0,
             "anomaly_type": "none",
         }
+
+        # NEW: real landing stress spike on first post-flight day (NASA I4, R+1)
+        if d == PRE_DAYS + flight_days:
+            row["glucose"] += GLU_LANDING
 
         # Days with a problem (only in flight)
         if phase == "flight" and rng.random() < ANOMALY_PROB:
@@ -100,7 +114,9 @@ for i, (_, u) in enumerate(mmash.iterrows()):
                 row["systolic_pressure"] = rng.uniform(140, 165)  # ACC/AHA
                 row["diastolic_pressure"] = rng.uniform(90, 105)
             elif kind == "hypoglycemia":
-                row["glucose"] = rng.uniform(45, 69)  # ADA
+                row["glucose"] = rng.uniform(
+                    40, 54
+                )  # non-diabetic hypoglycemia (Endocrine Society)
             elif kind == "insomnia":
                 row["sleep_min"] = rng.uniform(90, 200)
                 row["negative_mood"] += 6
@@ -114,7 +130,9 @@ df.to_csv(PROC / "astronaut_dataset_ml.csv", index=False)
 print(df.shape)
 print(df.groupby("mission")["astronaut"].nunique())
 print(
-    df.groupby(["mission", "phase"])[["temperature", "systolic_pressure", "sleep_min"]]
+    df.groupby(["mission", "phase"])[
+        ["temperature", "systolic_pressure", "sleep_min", "glucose"]
+    ]
     .mean()
     .round(1)
 )
