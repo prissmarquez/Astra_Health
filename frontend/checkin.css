@@ -45,6 +45,7 @@
   grid-template-areas:
     "hr       hrv"
     "spo2     temp"
+    "bp       glucose"
     "exercise sleep";
   gap: 12px;
 }
@@ -55,6 +56,8 @@
 .sleep-box    { grid-area: sleep; }
 .spo2-box     { grid-area: spo2; }
 .temp-box     { grid-area: temp; }
+.bp-box       { grid-area: bp; }
+.glucose-box  { grid-area: glucose; }
 
 /* Inner boxes share the same look */
 .measure-box,
@@ -187,65 +190,46 @@
   border-color: var(--blue);
 }
 
-/* ===== PANAS questionnaire ===== */
-.panas-instructions {
-  margin: 0 0 14px;
-  line-height: 1.5;
-}
-
-.panas-instructions small {
-  opacity: 0.8;
-}
-
-.panas-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.panas-table th {
-  padding: 8px;
-  font-size: 13px;
-  color: var(--blue);
-  border-bottom: 1px solid var(--border);
-}
-
-.panas-table th:first-child {
-  text-align: left;
-}
-
-.panas-table td {
-  padding: 8px;
-  text-align: center;
-  border-bottom: 1px solid rgba(42, 77, 153, 0.4);
-}
-
-.panas-table td:first-child {
-  text-align: left;
-}
-
-.panas-table tr:hover td {
-  background: rgba(122, 162, 255, 0.08);
-}
-
-.panas-table input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--blue);
-  cursor: pointer;
-}
-
-.panas-results {
+/* ===== PANAS card (link to panas.html) ===== */
+.panas-link {
   display: flex;
+  align-items: center;
+  gap: 16px;
   flex-wrap: wrap;
-  gap: 24px;
-  margin-top: 14px;
-  padding: 12px 14px;
-  background: rgba(20, 40, 90, 0.5);
-  border-radius: 10px;
 }
 
-.panas-results b {
+.panas-link-icon {
+  font-size: 34px;
+}
+
+.panas-link-text {
+  flex: 1;
+}
+
+.panas-link-text h3 {
+  margin: 0 0 4px;
+}
+
+.panas-link-text p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.panas-state {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--yellow);
+}
+
+.panas-state.done {
   color: var(--green);
+}
+
+.panas-btn {
+  margin-top: 0;
+  text-decoration: none;
 }
 
 .finish-message.error {
@@ -308,6 +292,8 @@
       "hrv"
       "spo2"
       "temp"
+      "bp"
+      "glucose"
       "exercise"
       "sleep";
   }
@@ -320,15 +306,6 @@
     padding: 14px;
   }
 
-  .panas-table th,
-  .panas-table td {
-    padding: 6px 4px;
-  }
-
-  .panas-results {
-    flex-direction: column;
-    gap: 6px;
-  }
 }
 
 @media (max-width: 480px) {
