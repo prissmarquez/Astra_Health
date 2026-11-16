@@ -3,8 +3,8 @@
 **Personal health monitoring for astronauts on long-duration missions.**
 Built for the [NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/) · Challenge: [Create Health Monitoring Software for Astronauts on Space Missions](https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/?tab=details)
 
-🎞️ **Demo (slides):** [ADD CANVA VIEW-ONLY LINK HERE]
-🔗 **Live app:** https://astrahealth.cooking · Demo account: [ADD CODE] / [ADD PASSWORD]
+🎞️ **Demo (slides):** https://www.canva.com/design/DAHbACu7ygo/d2OBmntXdBRsDzv7sAs6Kg/edit
+🔗 **Live app:** https://astrahealth.cooking - Demo account: LDR-1001, ASP-2003, ADM-0001, ASP-1001, LDR-2001, ASP-1002, ASP-1003, ASP-2002, ASP-2001 / 123456789 (PASSWORD)
 
 📄 **Project documentation:** [Read the document on Google Docs](https://docs.google.com/document/d/1m8DkLUc9CyhrAM3Dl_T38szfGQln6zldxLg-2gMiEJ8/edit?usp=sharing)
 
@@ -306,21 +306,6 @@ node ble_codec.test.js
 
 ---
 
-## Use of AI
-
-We used generative AI tools during development, and the team reviewed and tested all generated content. No AI tool was used to create or modify NASA branding.
-
-| Tool | What we used it for |
-| --- | --- |
-| **Claude** (Anthropic) | Generating and fixing frontend code (login, check-in, PANAS, sensors, history), aligning the data model with the backend, fixing an HTML injection vulnerability, explaining the ML and statistics concepts step by step, and drafting the project report |
-| **Claude Code** (Anthropic) | Backend integration (`/analysis`, `/sync`, `/body`, admin endpoints), offline mode, per-user offline queue, role permissions, Bluetooth sensor emulation, ML threshold tuning, admin user creation, environment variable cleanup, Docker deployment, and reviewing and drafting this README |
-| **Gemini** (Google) | [DESCRIBE WHAT YOU USED IT FOR, OR DELETE THIS ROW AND ITS REFERENCE] |
-| **Claude API** (Anthropic) | Inside the app: turns the health analysis into a plain-language explanation. It receives the analysis result (color, reasons, deviations) and the measured values with the exercise flag. It never decides the color, is told never to invent data, and is replaced by a cached or template explanation when unavailable. |
-
-[IF THE PROJECT REPORT WITH THE MAIN PROMPTS IS PUBLIC, LINK IT HERE; OTHERWISE DELETE THIS LINE]
-
----
-
 ## Limitations
 
 - Sensors are **simulated** in this prototype; readings are marked `is_simulated: true`.
@@ -338,15 +323,6 @@ We used generative AI tools during development, and the team reviewed and tested
 - Connect a real Bluetooth sensor through Web Bluetooth.
 - Add radiation dose to the check-in and connect crew registration to `POST /admin/users`.
 
----
-
-## Image credits
-
-[LIST EVERY IMAGE IN frontend/assets/ WITH ITS SOURCE AND LICENSE. Stock previews (Adobe Stock `360_F_…jpg`, iStock `istockphoto-…jpg`) must be licensed or replaced with free images before submission.]
-
-Files to cover: `360_F_556507108_gZT9lEkdhpmc9mgWsDHXSRN6z5WwstiU.jpg`, `BP.jpg`, `Captura de pantalla 2026-11-15 111605.png`, `ESTE.jpg`, `NEGROO.jpg`, `background.jpg`, `background_login.webp`, `gluco.png`, `istockphoto-647551866-612x612.jpg`, `oxigen.png`, `profile.png`, `recourse1.webp`, `recourse2.png`.
-
----
 
 ## References
 
@@ -410,7 +386,7 @@ Williams, B., Mancia, G., Spiering, W., Agabiti Rosei, E., Azizi, M., Burnier, M
 
 | Name | Role |
 | --- | --- |
-| [NAME] | Frontend |
-| [NAME] | Sensors and offline mode |
-| [NAME] | AI and database |
-| [NAME] | API and machine learning |
+| Marla Elizabeth | Frontend |
+| Danae | Frontend, Sensors |
+| Gael | AI and database |
+| Priscila | API and machine learning, offline mode |
