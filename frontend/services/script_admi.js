@@ -39,6 +39,7 @@ function makeSvg(tag, attrs) {
 
 // traffic light (health_analyses) -> status used by this page
 const STATUS_FROM_LIGHT = { green: "normal", yellow: "follow", red: "attention" };
+const STATUS_LABEL = { normal: "Normal", follow: "Follow-up", attention: "Needs attention" };
 
 /** getCrew() -> [{ id, name, role, status: "normal"|"follow"|"attention"|"none", photo }] */
 async function getCrew() {
@@ -96,22 +97,75 @@ async function getMemberHistory(id, days) {
   // Every single measurement -> table
   const { data: rows, error: err2 } = await supabaseClient
     .from("readings_detailed")
-    .select("taken_at, indicator_name, value, unit, source, sensor_name")
+    .select("taken_at, indicator, indicator_name, value, unit, source, sensor_name")
     .eq("astronaut_id", id)
     .gte("taken_at", since)
     .order("taken_at", { ascending: false })
     .limit(100);
   if (err2) throw new Error(err2.message);
 
-  const records = rows.map((r) => ({
-    datetime: formatLocalDateTime(r.taken_at),
-    indicator: r.indicator_name,
-    value: `${r.value} ${r.unit}`,
-    source: ["manual", "questionnaire"].includes(r.source) ? "manual" : "sensor",
-    notes: r.sensor_name,
-  }));
+  // ML analyses with risk (yellow / red) in the same period -> top of the log
+  const { data: analyses, error: err3 } = await supabaseClient
+    .from("health_analyses")
+    .select("day, traffic_light, clinical_reasons, deviations, connections, detected_by_ml, analyzed_at")
+    .eq("astronaut_id", id)
+    .in("traffic_light", ["yellow", "red"])
+    .gte("day", utcDay(sinceDate))
+    .order("analyzed_at", { ascending: false });
+  if (err3) console.error("Could not load analyses:", err3.message);
 
-  return { series, records };
+  const readingRecords = rows.map((r) => {
+    const risk = readingRisk(r.indicator, Number(r.value));
+    return {
+      ts: Date.parse(r.taken_at),
+      datetime: formatLocalDateTime(r.taken_at),
+      indicator: r.indicator_name,
+      value: `${r.value} ${r.unit}`,
+      source: ["manual", "questionnaire"].includes(r.source) ? "manual" : "sensor",
+      status: risk ? "attention" : "normal",
+      notes: risk ? `${risk} · ${r.sensor_name || ""}`.replace(/ · $/, "") : r.sensor_name,
+    };
+  });
+
+  const analysisRecords = (analyses || []).map((a) => {
+    const reasons = [
+      ...(a.clinical_reasons || []),
+      ...(a.deviations || []),
+      ...(a.connections || []),
+    ];
+    if (a.detected_by_ml) reasons.push("unusual pattern detected by ML");
+    return {
+      ts: Date.parse(a.analyzed_at),
+      datetime: formatLocalDateTime(a.analyzed_at),
+      indicator: "Health analysis",
+      value: a.traffic_light === "red" ? "Needs attention" : "Follow-up",
+      source: "sensor",
+      sourceLabel: "AI",
+      status: STATUS_FROM_LIGHT[a.traffic_light],
+      notes: reasons.length ? reasons.join("; ") : "Risk flagged by the health engine",
+    };
+  });
+
+  return { series, records: sortRecords([...analysisRecords, ...readingRecords]) };
+}
+
+// Is a single reading outside the recommended range? -> short reason, or null
+const RANGE_BY_CODE = { heart_rate: "hr", spo2: "spo2", systolic_bp: "bp", glucose: "glucose", temperature: "temp" };
+
+function readingRisk(code, value) {
+  const cfg = INDICATORS[RANGE_BY_CODE[code]];
+  if (!cfg || Number.isNaN(value)) return null;
+  if (value > cfg.range.max) return `Above recommended range (max ${cfg.range.max} ${cfg.unit})`;
+  if (value < cfg.range.min) return `Below recommended range (min ${cfg.range.min} ${cfg.unit})`;
+  return null;
+}
+
+// Risk first (red, then yellow), then everything else; newest first inside each group
+const STATUS_RANK = { attention: 0, follow: 1 };
+
+function sortRecords(records) {
+  const rank = (r) => (r.status in STATUS_RANK ? STATUS_RANK[r.status] : 2);
+  return records.sort((a, b) => rank(a) - rank(b) || b.ts - a.ts);
 }
 
 // INDICATORS
@@ -224,7 +278,7 @@ function showRecords(rows) {
   if (!rows || !rows.length) {
     const tr = makeEl("tr");
     const td = makeEl("td", "empty", "No records");
-    td.colSpan = 5;
+    td.colSpan = 6;
     tr.appendChild(td);
     body.replaceChildren(tr);
     return;
@@ -232,8 +286,31 @@ function showRecords(rows) {
 
   body.replaceChildren(); // clear the table
 
-  rows.forEach((r) => {
-    const tr = makeEl("tr");
+  const addSection = (text, cls) => {
+    const tr = makeEl("tr", "log-section " + cls);
+    const td = makeEl("td", "", text);
+    td.colSpan = 6;
+    tr.appendChild(td);
+    body.appendChild(tr);
+  };
+
+  const riskCount = rows.filter((r) => r.status === "attention" || r.status === "follow").length;
+  if (riskCount) addSection(`⚠ Risk factors (${riskCount})`, "risk");
+
+  rows.forEach((r, i) => {
+    const isRisk = r.status === "attention" || r.status === "follow";
+    if (!isRisk && i === riskCount && riskCount) addSection("Other records (by date)", "rest");
+
+    const tr = makeEl("tr", isRisk ? "risk-row " + safeClass(r.status, ALLOWED_STATUS) : "");
+
+    // Status: colored dot + label
+    const statusTd = makeEl("td");
+    const st = makeEl("span", "source-tag");
+    st.appendChild(makeEl("i", "dot " + safeClass(r.status, ALLOWED_STATUS)));
+    st.append(" " + (STATUS_LABEL[r.status] || "Normal"));
+    statusTd.appendChild(st);
+    tr.appendChild(statusTd);
+
     tr.appendChild(makeEl("td", "", r.datetime));
     tr.appendChild(makeEl("td", "", r.indicator));
     tr.appendChild(makeEl("td", "", r.value));
@@ -242,7 +319,7 @@ function showRecords(rows) {
     const sourceTd = makeEl("td");
     const tag = makeEl("span", "source-tag");
     tag.appendChild(makeEl("i", "dot " + safeClass(r.source, ALLOWED_SOURCES)));
-    tag.append(" " + (r.source === "manual" ? "Manual" : "Sensor"));
+    tag.append(" " + (r.sourceLabel || (r.source === "manual" ? "Manual" : "Sensor")));
     sourceTd.appendChild(tag);
     tr.appendChild(sourceTd);
 

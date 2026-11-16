@@ -201,3 +201,20 @@
 @media (max-width: 600px) {
   .admin-split .create-user-form { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ADMIN LOG: risk rows on top */
+
+.table tr.log-section td {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  padding-top: 12px;
+  color: #9db4e8;
+}
+
+.table tr.log-section.risk td { color: var(--red); }
+
+.table tr.risk-row.attention td { background: rgba(255, 80, 80, 0.12); }
+.table tr.risk-row.follow td { background: rgba(255, 200, 60, 0.10); }
+.table tr.risk-row.attention td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.table tr.risk-row.follow td:first-child { box-shadow: inset 3px 0 0 var(--yellow); }
